@@ -1,0 +1,10 @@
+RewriteEngine On
+
+# Servir arquivos estáticos diretamente
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^.*$ - [L]
+
+# Redirecionar outras requisições para index.php
+RewriteCond %{REQUEST_FILENAME} \!-f
+RewriteCond %{REQUEST_FILENAME} \!-d
+RewriteRule ^(.*)$ index.php [QSA,L]

@@ -1,0 +1,26 @@
+# Proteger arquivos PHP fora da pasta public
+<FilesMatch "\.(php|inc|tpl|sql)$">
+    Order deny,allow
+    Deny from all
+</FilesMatch>
+
+# Desabilitar listagem de diretórios
+Options -Indexes
+
+# Proteger arquivos sensíveis
+<FilesMatch "(\.htaccess|\.htpasswd|\.env|composer\.(json|lock)|package\.(json|lock))$">
+    Order deny,allow
+    Deny from all
+</FilesMatch>
+
+RewriteEngine On
+
+# Arquivos especiais na raiz (permitir acesso direto)
+RewriteRule ^install\.php$ - [L]
+RewriteRule ^reset_data\.php$ - [L]
+
+# Redirecionar todas as outras requisições para public/
+RewriteCond %{REQUEST_URI} !^/public/
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ public/index.php?route=$1 [QSA,L]

@@ -1,0 +1,663 @@
+/**
+ * Sistema de Design Unificado - MegaFisio IA
+ * Baseado no padrão visual do fisio-admin.php
+ */
+
+:root {
+    /* Paleta Profissional de Saúde */
+    --azul-saude: #1e3a8a;          /* Azul profissional */
+    --verde-terapia: #059669;       /* Verde saúde */
+    --dourado-premium: #ca8a04;     /* Dourado suave */
+    --lilas-cuidado: #7c3aed;       /* Lilás tecnologia */
+    --branco-puro: #ffffff;         /* Branco limpo */
+    --cinza-claro: #f8fafc;         /* Fundo suave */
+    --cinza-medio: #e5e7eb;         /* Bordas */
+    --cinza-escuro: #1f2937;        /* Texto principal */
+    --preto-menu: #111827;          /* Menu escuro */
+    
+    /* Cores de Status */
+    --sucesso: #10b981;             /* Verde positivo */
+    --alerta: #f59e0b;              /* Amarelo atenção */
+    --erro: #ef4444;                /* Vermelho erro */
+    --info: #3b82f6;                /* Azul informação */
+    
+    /* Gradientes Suaves */
+    --gradiente-principal: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+    --gradiente-menu: linear-gradient(180deg, #111827 0%, #1f2937 100%);
+    --gradiente-card: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    
+    /* Sombras Modernas */
+    --sombra-suave: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    --sombra-media: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --sombra-forte: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    --sombra-flutuante: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    
+    /* Transições */
+    --transicao: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transicao-lenta: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Títulos e Textos Padrão */
+.titulo-pagina {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--azul-saude);
+    margin-bottom: 12px;
+    letter-spacing: -0.5px;
+}
+
+.subtitulo-pagina-escuro {
+    font-size: 16px;
+    color: var(--cinza-escuro);
+    margin-bottom: 32px;
+    font-weight: 500;
+}
+
+/* Cards Base */
+.card-fisio {
+    background: var(--gradiente-card);
+    border: 1px solid var(--cinza-medio);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: var(--sombra-media);
+    transition: var(--transicao);
+}
+
+.card-fisio:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--sombra-forte);
+}
+
+/* Grade de Estatísticas */
+.grade-estatisticas {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+    margin-bottom: 32px;
+}
+
+.card-estatistica {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 28px;
+    transition: all 0.3s ease;
+}
+
+.card-estatistica:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+}
+
+.card-icone-grande {
+    width: 72px;
+    height: 72px;
+    background: var(--gradiente-principal);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    color: white;
+}
+
+.card-icone-grande.ia {
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+}
+
+.card-icone-grande.online {
+    background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+}
+
+.card-icone-grande.saude {
+    background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+}
+
+.card-conteudo-stat {
+    flex: 1;
+}
+
+.stat-valor {
+    font-size: 36px;
+    font-weight: 800;
+    color: var(--cinza-escuro);
+    line-height: 1;
+    margin-bottom: 4px;
+}
+
+.stat-label {
+    font-size: 16px;
+    color: var(--cinza-medio);
+    font-weight: 500;
+    margin-bottom: 8px;
+}
+
+.stat-label-escuro {
+    font-size: 16px;
+    color: var(--cinza-escuro);
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.stat-variacao {
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.stat-variacao.positiva {
+    color: var(--sucesso);
+}
+
+.stat-variacao.negativa {
+    color: var(--erro);
+}
+
+.stat-variacao.neutra {
+    color: var(--cinza-medio);
+}
+
+/* Grade Principal */
+.grade-principal {
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    gap: 24px;
+}
+
+.grid-fisio {
+    display: grid;
+    gap: 24px;
+}
+
+.coluna-maior {
+    min-width: 0;
+}
+
+.coluna-menor {
+    min-width: 0;
+}
+
+/* Headers dos Cards */
+.card-header-fisio {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--cinza-medio);
+}
+
+.card-titulo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--cinza-escuro);
+}
+
+.card-titulo i {
+    color: var(--azul-saude);
+}
+
+.card-acoes {
+    display: flex;
+    gap: 8px;
+}
+
+/* Botões Padrão */
+.btn-fisio {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: var(--transicao);
+    font-family: inherit;
+}
+
+.btn-fisio.btn-primario {
+    background: var(--gradiente-principal);
+    color: white;
+    box-shadow: var(--sombra-media);
+}
+
+.btn-fisio.btn-primario:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--sombra-forte);
+}
+
+.btn-fisio.btn-secundario {
+    background: var(--cinza-claro);
+    color: var(--cinza-escuro);
+    border: 1px solid var(--cinza-medio);
+}
+
+.btn-fisio.btn-secundario:hover {
+    background: var(--cinza-medio);
+}
+
+.btn-fisio.btn-pequeno {
+    padding: 8px 16px;
+    font-size: 14px;
+}
+
+.btn-fisio.btn-completo {
+    width: 100%;
+    justify-content: center;
+}
+
+/* Filtros */
+.filtro-periodo {
+    padding: 8px 16px;
+    border: 1px solid var(--cinza-medio);
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--cinza-escuro);
+    background: white;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+/* Gráfico */
+.grafico-container {
+    height: 300px;
+    margin-bottom: 24px;
+    background: var(--cinza-claro);
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+}
+
+.grafico-legenda {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.legenda-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--cinza-escuro);
+}
+
+.legenda-cor {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+}
+
+.legenda-cor.ortopedica { background: #3b82f6; }
+.legenda-cor.neurologica { background: #7c3aed; }
+.legenda-cor.respiratoria { background: #10b981; }
+.legenda-cor.geriatrica { background: #f59e0b; }
+
+.grafico-orientacao {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 12px;
+    background: rgba(30, 58, 138, 0.05);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--azul-saude);
+}
+
+.grafico-orientacao i {
+    font-size: 16px;
+}
+
+/* Lista de Atividades */
+.lista-atividades {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.atividade-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: var(--cinza-claro);
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.atividade-item:hover {
+    background: var(--cinza-medio);
+    transform: translateX(4px);
+}
+
+.atividade-icone {
+    width: 40px;
+    height: 40px;
+    background: var(--gradiente-principal);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.atividade-conteudo {
+    flex: 1;
+}
+
+.atividade-titulo {
+    font-weight: 600;
+    color: var(--cinza-escuro);
+    font-size: 15px;
+    margin-bottom: 4px;
+}
+
+.atividade-info {
+    display: flex;
+    gap: 12px;
+    font-size: 13px;
+    color: var(--cinza-medio);
+}
+
+.atividade-tempo {
+    color: var(--azul-saude);
+}
+
+.atividade-status {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.status-success { background: var(--sucesso); }
+.status-info { background: var(--info); }
+.status-warning { background: var(--alerta); }
+.status-error { background: var(--erro); }
+
+.atividade-vazia {
+    text-align: center;
+    padding: 48px;
+    color: var(--cinza-medio);
+}
+
+.atividade-vazia i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.atividade-vazia small {
+    color: var(--azul-saude);
+    font-size: 14px;
+    margin-top: 8px;
+    display: block;
+}
+
+/* Lista de Módulos */
+.lista-modulos {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.modulo-ia-item-admin {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: var(--cinza-claro);
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+}
+
+.modulo-icone {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 20px;
+}
+
+.modulo-icone.ortopedica { background: linear-gradient(135deg, #3b82f6, #60a5fa); }
+.modulo-icone.neurologica { background: linear-gradient(135deg, #7c3aed, #a78bfa); }
+.modulo-icone.respiratoria { background: linear-gradient(135deg, #10b981, #34d399); }
+.modulo-icone.geriatrica { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
+.modulo-icone.pediatrica { background: linear-gradient(135deg, #ec4899, #f472b6); }
+
+.modulo-info-admin {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.modulo-nome {
+    font-weight: 600;
+    color: var(--cinza-escuro);
+}
+
+.modulo-uso {
+    font-size: 12px;
+    color: var(--cinza-medio);
+}
+
+.modulo-uso-escuro {
+    font-size: 12px;
+    color: var(--cinza-escuro);
+    font-weight: 500;
+}
+
+.modulo-progresso {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--cinza-medio);
+}
+
+.progresso-barra {
+    height: 100%;
+    background: var(--azul-saude);
+    transition: width 0.5s ease;
+}
+
+/* Resumo de Uso */
+.resumo-uso {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding: 16px;
+    background: rgba(30, 58, 138, 0.05);
+    border-radius: 12px;
+}
+
+.resumo-item {
+    text-align: center;
+}
+
+.resumo-numero {
+    display: block;
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--azul-saude);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.resumo-label {
+    font-size: 12px;
+    color: var(--cinza-medio);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.resumo-label-escuro {
+    font-size: 12px;
+    color: var(--cinza-escuro);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Lista de Status */
+.lista-status {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.status-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.status-indicador {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    position: relative;
+}
+
+.status-indicador.online {
+    background: var(--sucesso);
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+}
+
+.status-indicador.aviso {
+    background: var(--alerta);
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+}
+
+.status-indicador.offline {
+    background: var(--erro);
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+}
+
+.status-indicador::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: inherit;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(2);
+        opacity: 0;
+    }
+}
+
+.status-info {
+    flex: 1;
+}
+
+.status-nome {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--cinza-escuro);
+}
+
+.status-valor {
+    font-size: 13px;
+    color: var(--cinza-medio);
+}
+
+/* Estados Vazios */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--cinza-medio);
+}
+
+.empty-state i {
+    font-size: 4rem;
+    color: var(--azul-saude);
+    margin-bottom: 20px;
+    opacity: 0.7;
+}
+
+.empty-state h3 {
+    color: var(--azul-saude);
+    margin-bottom: 12px;
+    font-weight: 600;
+}
+
+.empty-state p {
+    color: var(--cinza-medio);
+    font-size: 0.9rem;
+}
+
+/* Responsivo */
+@media (max-width: 1200px) {
+    .grade-principal {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .grade-estatisticas {
+        grid-template-columns: 1fr;
+    }
+    
+    .grade-principal {
+        grid-template-columns: 1fr;
+    }
+    
+    .grafico-legenda {
+        gap: 16px;
+    }
+    
+    .card-header-fisio {
+        flex-direction: column;
+        gap: 16px;
+        align-items: flex-start;
+    }
+    
+    .titulo-pagina {
+        font-size: 2rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .card-fisio {
+        padding: 16px;
+    }
+    
+    .card-estatistica {
+        padding: 20px;
+    }
+    
+    .titulo-pagina {
+        font-size: 1.75rem;
+    }
+}

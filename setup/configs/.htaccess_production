@@ -1,0 +1,67 @@
+# Configuração .htaccess para produção (public_html)
+# Este arquivo deve ser colocado na raiz do public_html
+
+# Segurança - Bloquear acesso a arquivos sensíveis
+<FilesMatch "\.(env|json|lock|md|yml|yaml|ini|log|sh|sql)$">
+    Order deny,allow
+    Deny from all
+</FilesMatch>
+
+# Bloquear acesso a diretórios
+<FilesMatch "^(composer|package|Gruntfile|gulpfile|bower|karma|protractor)\.(json|js)$">
+    Order deny,allow
+    Deny from all
+</FilesMatch>
+
+# Desabilitar listagem de diretórios
+Options -Indexes -MultiViews
+
+# Proteger arquivos e diretórios ocultos
+<FilesMatch "^\.">
+    Order deny,allow
+    Deny from all
+</FilesMatch>
+
+# Habilitar rewrite
+RewriteEngine On
+
+# HTTPS redirect (descomente em produção com SSL)
+# RewriteCond %{HTTPS} !=on
+# RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
+
+# Redirecionar tudo para index.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php?route=$1 [QSA,L]
+
+# Headers de segurança
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+    Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;"
+</IfModule>
+
+# Compressão
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/css text/javascript application/javascript application/json
+</IfModule>
+
+# Cache de assets
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType image/jpg "access plus 1 year"
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/gif "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+</IfModule>
+
+# Proteção contra hotlinking
+<IfModule mod_rewrite.c>
+    RewriteCond %{HTTP_REFERER} !^$
+    RewriteCond %{HTTP_REFERER} !^https?://(www\.)?seu-dominio\.com [NC]
+    RewriteRule \.(jpg|jpeg|png|gif)$ - [F]
+</IfModule>
