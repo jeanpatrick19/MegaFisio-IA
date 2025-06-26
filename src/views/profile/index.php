@@ -149,6 +149,14 @@
                             </div>
                         </a>
                         
+                        <a href="<?= BASE_URL ?>/profile/activities" class="profile-action">
+                            <div class="action-icon">📊</div>
+                            <div class="action-content">
+                                <div class="action-title">Atividades</div>
+                                <div class="action-desc">Histórico e exportação</div>
+                            </div>
+                        </a>
+                        
                         <a href="<?= BASE_URL ?>/profile/privacy" class="profile-action">
                             <div class="action-icon">🔒</div>
                             <div class="action-content">

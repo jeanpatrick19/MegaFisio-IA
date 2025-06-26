@@ -7,21 +7,34 @@ if (!defined('PUBLIC_ACCESS')) {
 abstract class BaseController {
     protected $db;
     protected $user = null;
+    protected $activityLogger = null;
+    protected $permissionManager = null;
     
     public function __construct($db) {
         $this->db = $db;
+        $this->loadHelpers();
+        $this->activityLogger = new ActivityLogger();
+        $this->permissionManager = PermissionManager::getInstance();
         $this->checkAuth();
+    }
+    
+    protected function loadHelpers() {
+        // Carregar helpers
+        require_once SRC_PATH . '/helpers/DateTimeHelper.php';
+        require_once SRC_PATH . '/helpers/ActivityLogger.php';
+        require_once SRC_PATH . '/helpers/PermissionManager.php';
     }
     
     protected function checkAuth() {
         if (isset($_SESSION['user_id'])) {
-            // Garantir que a tabela user_profiles_extended existe
+            // Garantir que as tabelas essenciais existem com estrutura atualizada
             require_once SRC_PATH . '/models/SmartMigrationManager.php';
+            SmartMigrationManager::ensureTable('users');
             SmartMigrationManager::ensureTable('user_profiles_extended');
             
             $stmt = $this->db->prepare("
                 SELECT u.id, u.email, u.name, u.role, u.status, 
-                       p.avatar_type, p.avatar_path, p.avatar_default
+                       p.avatar_type, p.avatar_path, p.avatar_default, p.two_factor_enabled
                 FROM users u 
                 LEFT JOIN user_profiles_extended p ON u.id = p.user_id
                 WHERE u.id = ? AND u.status = 'active'
@@ -31,6 +44,9 @@ abstract class BaseController {
             
             if (!$this->user) {
                 $this->logout();
+            } else {
+                // Carregar preferências de data/hora do usuário
+                DateTimeHelper::loadUserPreferences($this->user['id'], $this->db);
             }
         }
     }
@@ -51,6 +67,57 @@ abstract class BaseController {
         if (!in_array($this->user['role'], $roles)) {
             $this->forbidden();
         }
+    }
+    
+    /**
+     * Verificar se usuário tem permissão específica
+     */
+    protected function requirePermission($permission) {
+        $this->requireAuth();
+        
+        // Admins têm acesso total, não verificar permissões
+        if ($this->user['role'] === 'admin') {
+            return;
+        }
+        
+        if (!$this->permissionManager->hasPermission($this->user['id'], $permission)) {
+            $this->logUserAction($this->user['id'], 'access_denied', "Tentativa de acesso sem permissão: {$permission}", false);
+            $this->forbidden();
+        }
+    }
+    
+    /**
+     * Verificar se usuário pode acessar módulo
+     */
+    protected function requireModuleAccess($module) {
+        $this->requireAuth();
+        
+        if (!$this->permissionManager->canAccessModule($this->user['id'], $module)) {
+            $this->logUserAction($this->user['id'], 'access_denied', "Tentativa de acesso ao módulo: {$module}", false);
+            $this->forbidden();
+        }
+    }
+    
+    /**
+     * Verificar permissão sem lançar exceção
+     */
+    protected function hasPermission($permission) {
+        if (!$this->user) {
+            return false;
+        }
+        
+        return $this->permissionManager->hasPermission($this->user['id'], $permission);
+    }
+    
+    /**
+     * Verificar se é super admin
+     */
+    protected function isSuperAdmin() {
+        if (!$this->user) {
+            return false;
+        }
+        
+        return $this->permissionManager->isSuperAdmin($this->user['id']);
     }
     
     protected function getUserAvatarHtml($size = 'medium') {
@@ -288,50 +355,83 @@ abstract class BaseController {
         return $_SESSION['csrf_token'] ?? '';
     }
     
-    /**
-     * Log de ações do usuário - método centralizado
-     */
-    protected function logUserAction($userId, $acao, $detalhes, $sucesso = true, $email = null) {
-        try {
-            // Garantir que a tabela user_logs existe
-            $this->loadSmartMigrationManager();
-            SmartMigrationManager::ensureSchema('user_logs', [
-                'id' => 'INT AUTO_INCREMENT PRIMARY KEY',
-                'user_id' => 'INT NULL',
-                'email' => 'VARCHAR(255) NULL',
-                'acao' => 'VARCHAR(100) NOT NULL',
-                'detalhes' => 'TEXT NULL',
-                'ip_address' => 'VARCHAR(45) NULL',
-                'user_agent' => 'TEXT NULL',
-                'sucesso' => 'BOOLEAN DEFAULT TRUE',
-                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
-            ]);
+    protected function validateCSRFAjax() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $token = $_POST['csrf_token'] ?? '';
+            $sessionToken = $_SESSION['csrf_token'] ?? '';
             
-            $stmt = $this->db->prepare("
-                INSERT INTO user_logs (user_id, email, acao, detalhes, ip_address, user_agent, sucesso)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ");
+            if (empty($token) || empty($sessionToken) || !hash_equals($sessionToken, $token)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    
+    /**
+     * Log de ações do usuário usando ActivityLogger moderno
+     */
+    protected function logUserAction($userId, $acao, $detalhes = null, $sucesso = true, $email = null, $categoria = null, $metadados = null) {
+        try {
+            // Mapear categorias baseadas na ação
+            if (!$categoria) {
+                $categoria = $this->mapActionToCategory($acao);
+            }
             
             // Se email não foi fornecido e temos userId, buscar email
             if (!$email && $userId) {
-                $stmt2 = $this->db->prepare("SELECT email FROM users WHERE id = ?");
-                $stmt2->execute([$userId]);
-                $email = $stmt2->fetchColumn();
+                $stmt = $this->db->prepare("SELECT email FROM users WHERE id = ?");
+                $stmt->execute([$userId]);
+                $email = $stmt->fetchColumn();
             }
             
-            $stmt->execute([
+            // Usar o ActivityLogger
+            $this->activityLogger->log(
+                $acao,
+                $categoria,
+                $detalhes,
                 $userId,
                 $email,
-                $acao,
-                $detalhes,
-                $_SERVER['REMOTE_ADDR'] ?? null,
-                $_SERVER['HTTP_USER_AGENT'] ?? null,
-                $sucesso
-            ]);
+                $sucesso,
+                $metadados
+            );
             
         } catch (Exception $e) {
             error_log("Erro ao registrar log de usuário: " . $e->getMessage());
         }
+    }
+    
+    /**
+     * Mapear ações para categorias
+     */
+    private function mapActionToCategory($acao) {
+        $categorias = [
+            'login' => 'authentication',
+            'logout' => 'authentication',
+            'login_failed' => 'authentication',
+            'login_pending_2fa' => 'authentication',
+            '2fa_verified' => 'authentication',
+            '2fa_failed' => 'authentication',
+            'register' => 'authentication',
+            'password_changed' => 'security',
+            'password_reset' => 'security',
+            '2fa_enabled' => 'security',
+            '2fa_disabled' => 'security',
+            'profile_updated' => 'profile',
+            'profile_view' => 'profile',
+            'preferences_updated' => 'profile',
+            'avatar_changed' => 'profile',
+            'session_created' => 'security',
+            'session_revoked' => 'security',
+            'data_export' => 'data',
+            'account_deletion_request' => 'account',
+            'system_access' => 'admin',
+            'user_created' => 'admin',
+            'user_updated' => 'admin',
+            'user_deleted' => 'admin',
+            'settings_updated' => 'admin'
+        ];
+        
+        return $categorias[$acao] ?? 'other';
     }
     
     protected function csrfField() {

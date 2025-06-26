@@ -139,113 +139,64 @@
         </div>
         
         <div class="usuarios-lista-expandida" id="usuariosLista">
-            <!-- Usuario exemplo -->
-            <div class="usuario-item-expandido" data-status="active" data-role="admin">
-                <div class="usuario-principal">
-                    <div class="usuario-avatar">
-                        <div class="avatar-circulo admin">AD</div>
-                        <div class="status-indicador active"></div>
-                    </div>
-                    
-                    <div class="usuario-info">
-                        <div class="usuario-nome">Dr. Admin Sistema</div>
-                        <div class="usuario-email">admin@megafisio.com.br</div>
-                        <div class="usuario-meta">
-                            <span class="usuario-role">Administrador</span>
-                            <span class="usuario-crefito">CREFITO: 123456-F</span>
-                        </div>
-                    </div>
-                    
-                    <div class="usuario-dados-expandidos">
-                        <div class="dado-item">
-                            <span class="dado-label">Último Acesso</span>
-                            <span class="dado-valor">Agora</span>
-                        </div>
-                        <div class="dado-item">
-                            <span class="dado-label">IP</span>
-                            <span class="dado-valor">192.168.1.100</span>
-                        </div>
-                        <div class="dado-item">
-                            <span class="dado-label">Sessões</span>
-                            <span class="dado-valor">15</span>
-                        </div>
-                        <div class="dado-item">
-                            <span class="dado-label">Avaliações IA</span>
-                            <span class="dado-valor">340</span>
-                        </div>
-                    </div>
-                    
-                    <div class="usuario-acoes">
-                        <button class="btn-acao editar" onclick="editarUsuario(1)" data-tooltip="Editar usuário">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn-acao permissoes" onclick="gerenciarPermissoes(1)" data-tooltip="Gerenciar permissões">
-                            <i class="fas fa-shield-alt"></i>
-                        </button>
-                        <button class="btn-acao logs" onclick="verLogsUsuario(1)" data-tooltip="Ver logs">
-                            <i class="fas fa-history"></i>
-                        </button>
-                        <button class="btn-acao email" onclick="enviarEmail(1)" data-tooltip="Enviar email">
-                            <i class="fas fa-envelope"></i>
-                        </button>
-                        <button class="btn-acao pausar" onclick="alterarStatusUsuario(1, 'active')" data-tooltip="Bloquear">
-                            <i class="fas fa-ban"></i>
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="usuario-detalhes" style="display: none;">
-                    <div class="detalhes-grid">
-                        <div class="detalhe-secao">
-                            <h5>Informações Pessoais</h5>
-                            <div class="detalhe-item">
-                                <span>Telefone:</span>
-                                <span>(11) 99999-9999</span>
+            <?php if (isset($users) && !empty($users)): ?>
+                <?php foreach ($users as $usuario): ?>
+                <div class="usuario-item-expandido" data-status="<?= $usuario['status'] ?>" data-role="<?= $usuario['role'] ?>">
+                    <div class="usuario-principal">
+                        <div class="usuario-avatar">
+                            <div class="avatar-circulo <?= $usuario['role'] ?>">
+                                <?= strtoupper(substr($usuario['name'], 0, 2)) ?>
                             </div>
-                            <div class="detalhe-item">
-                                <span>Especialidade:</span>
-                                <span>Administração</span>
-                            </div>
-                            <div class="detalhe-item">
-                                <span>Cadastro:</span>
-                                <span>15/01/2024 10:30</span>
+                            <div class="status-indicador <?= $usuario['status'] ?>"></div>
+                        </div>
+                        
+                        <div class="usuario-info">
+                            <div class="usuario-nome"><?= htmlspecialchars($usuario['name']) ?></div>
+                            <div class="usuario-email"><?= htmlspecialchars($usuario['email']) ?></div>
+                            <div class="usuario-meta">
+                                <span class="usuario-role"><?= $usuario['role'] === 'admin' ? 'Administrador' : 'Fisioterapeuta' ?></span>
+                                <span class="usuario-status status-<?= $usuario['status'] ?>"><?= $usuario['status'] === 'active' ? 'Ativo' : 'Inativo' ?></span>
                             </div>
                         </div>
                         
-                        <div class="detalhe-secao">
-                            <h5>Segurança</h5>
-                            <div class="detalhe-item">
-                                <span>2FA:</span>
-                                <span class="status-ativo">Ativo</span>
+                        <div class="usuario-dados-expandidos">
+                            <div class="dado-item">
+                                <span class="dado-label">Último Acesso</span>
+                                <span class="dado-valor"><?= $usuario['last_login'] ? date('d/m/Y H:i', strtotime($usuario['last_login'])) : 'Nunca' ?></span>
                             </div>
-                            <div class="detalhe-item">
-                                <span>Tentativas de Login:</span>
-                                <span>0 falhas</span>
-                            </div>
-                            <div class="detalhe-item">
-                                <span>Senha Alterada:</span>
-                                <span>20/01/2024</span>
+                            <div class="dado-item">
+                                <span class="dado-label">Cadastro</span>
+                                <span class="dado-valor"><?= date('d/m/Y H:i', strtotime($usuario['created_at'])) ?></span>
                             </div>
                         </div>
                         
-                        <div class="detalhe-secao">
-                            <h5>LGPD</h5>
-                            <div class="detalhe-item">
-                                <span>Consentimento:</span>
-                                <span class="status-ativo">Aceito</span>
-                            </div>
-                            <div class="detalhe-item">
-                                <span>Data Aceite:</span>
-                                <span>15/01/2024 10:35</span>
-                            </div>
-                            <div class="detalhe-item">
-                                <span>Dados Exportados:</span>
-                                <span>Nunca</span>
-                            </div>
+                        <div class="usuario-acoes">
+                            <button class="btn-acao editar" onclick="editarUsuario(<?= $usuario['id'] ?>)" data-tooltip="Editar usuário">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <?php if ($usuario['role'] !== 'admin'): ?>
+                            <button class="btn-acao permissoes" onclick="gerenciarPermissoes(<?= $usuario['id'] ?>)" data-tooltip="Gerenciar permissões">
+                                <i class="fas fa-shield-alt"></i>
+                            </button>
+                            <?php endif; ?>
+                            <button class="btn-acao logs" onclick="verLogsUsuario(<?= $usuario['id'] ?>)" data-tooltip="Ver logs">
+                                <i class="fas fa-history"></i>
+                            </button>
+                            <?php if ($usuario['id'] !== $user['id']): ?>
+                            <button class="btn-acao pausar" onclick="alterarStatusUsuario(<?= $usuario['id'] ?>, '<?= $usuario['status'] === 'active' ? 'inactive' : 'active' ?>')" data-tooltip="<?= $usuario['status'] === 'active' ? 'Bloquear' : 'Ativar' ?>">
+                                <i class="fas fa-<?= $usuario['status'] === 'active' ? 'ban' : 'check' ?>"></i>
+                            </button>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
-            </div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div style="text-align: center; padding: 40px; color: var(--cinza-escuro);">
+                    <i class="fas fa-users" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
+                    <p>Nenhum usuário cadastrado</p>
+                </div>
+            <?php endif; ?>
         </div>
     </div>
 </div>
@@ -254,54 +205,59 @@
 <div class="aba-conteudo" id="conteudoPermissoes">
     <div class="permissoes-container">
         <div class="permissoes-header">
-            <h3>Sistema de Permissões</h3>
-            <button class="btn-fisio btn-primario" onclick="abrirModalNovaPermissao()">
-                <i class="fas fa-plus"></i>
-                Nova Permissão
-            </button>
+            <h3>Gerenciar Permissões de Usuários</h3>
+            <p style="color: var(--cinza-escuro); margin: 8px 0;">Selecione um usuário e gerencie suas permissões com checkboxes "Ver" e "Usar"</p>
+            <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 12px; margin: 12px 0;">
+                <div style="display: flex; align-items: center; gap: 8px; color: #047857;">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Importante:</strong>
+                </div>
+                <p style="margin: 4px 0 0 24px; color: #047857; font-size: 14px;">
+                    Administradores têm acesso total automático a todo o sistema. Apenas fisioterapeutas e outros usuários precisam de permissões específicas.
+                </p>
+            </div>
         </div>
         
-        <div class="permissoes-grid">
-            <div class="card-fisio permissao-grupo">
-                <h4>Administradores</h4>
-                <div class="permissao-lista">
-                    <div class="permissao-item ativa">
-                        <i class="fas fa-check-circle"></i>
-                        <span>Gerenciar usuários</span>
-                    </div>
-                    <div class="permissao-item ativa">
-                        <i class="fas fa-check-circle"></i>
-                        <span>Configurar sistema</span>
-                    </div>
-                    <div class="permissao-item ativa">
-                        <i class="fas fa-check-circle"></i>
-                        <span>Ver relatórios</span>
-                    </div>
-                    <div class="permissao-item ativa">
-                        <i class="fas fa-check-circle"></i>
-                        <span>Gerenciar IA</span>
-                    </div>
-                </div>
+        <!-- Seletor de Usuário -->
+        <div class="card-fisio" style="margin-bottom: 20px;">
+            <div style="padding: 16px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--cinza-escuro);">Selecionar Usuário:</label>
+                <select id="usuarioSelecionado" style="width: 100%; padding: 12px; border: 2px solid var(--cinza-medio); border-radius: 8px; font-size: 14px;" onchange="carregarPermissoesDoUsuario(this.value)">
+                    <option value="">Escolha um usuário para gerenciar permissões</option>
+                    <!-- Usuários serão carregados via JavaScript -->
+                </select>
             </div>
-            
-            <div class="card-fisio permissao-grupo">
-                <h4>Fisioterapeutas</h4>
-                <div class="permissao-lista">
-                    <div class="permissao-item ativa">
-                        <i class="fas fa-check-circle"></i>
-                        <span>Usar assistente IA</span>
+        </div>
+        
+        <!-- Interface de Permissões -->
+        <div id="interfacePermissoesSimples" style="display: none;">
+            <div class="card-fisio">
+                <div style="padding: 16px;">
+                    <h4 style="color: var(--azul-saude); margin-bottom: 16px;" id="usuarioAtualNome">Permissões do Usuário</h4>
+                    
+                    <!-- Grid de Permissões dos 23 Dr. IA -->
+                    <div style="display: grid; gap: 16px;">
+                        <h5 style="color: var(--cinza-escuro); margin: 16px 0 8px 0;">🤖 Assistentes Dr. IA</h5>
+                        <div id="permissoesIA" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px;">
+                            <!-- Permissões serão carregadas aqui -->
+                        </div>
+                        
+                        <h5 style="color: var(--cinza-escuro); margin: 16px 0 8px 0;">⚙️ Sistema</h5>
+                        <div id="permissoesSistema" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px;">
+                            <!-- Permissões de sistema -->
+                        </div>
                     </div>
-                    <div class="permissao-item ativa">
-                        <i class="fas fa-check-circle"></i>
-                        <span>Ver próprio perfil</span>
-                    </div>
-                    <div class="permissao-item inativa">
-                        <i class="fas fa-times-circle"></i>
-                        <span>Gerenciar usuários</span>
-                    </div>
-                    <div class="permissao-item inativa">
-                        <i class="fas fa-times-circle"></i>
-                        <span>Configurar sistema</span>
+                    
+                    <!-- Botões de Ação -->
+                    <div style="display: flex; gap: 12px; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--cinza-medio);">
+                        <button class="btn-fisio btn-primario" onclick="salvarPermissoesSimples()">
+                            <i class="fas fa-save"></i>
+                            Salvar Permissões
+                        </button>
+                        <button class="btn-fisio btn-secundario" onclick="cancelarPermissoes()">
+                            <i class="fas fa-times"></i>
+                            Cancelar
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1131,8 +1087,17 @@ document.addEventListener('click', function(e) {
 
 // Funções específicas das abas
 function gerenciarPermissoes(id) {
+    // Trocar para aba de permissões
     trocarAba('permissoes');
-    mostrarAlerta('Carregando permissões do usuário...', 'info');
+    
+    // Aguardar um pouco e selecionar o usuário
+    setTimeout(() => {
+        const select = document.getElementById('usuarioSelecionado');
+        if (select) {
+            select.value = id;
+            carregarPermissoesDoUsuario(id);
+        }
+    }, 100);
 }
 
 function verLogsUsuario(id) {
@@ -1176,7 +1141,7 @@ function atualizarLista() {
 
 // Funções específicas da gestão de usuários
 function abrirModalNovoUsuario() {
-    mostrarAlerta('Modal de novo usuário será implementado', 'info');
+    document.getElementById('modalNovoUsuario').style.display = 'flex';
 }
 
 function importarUsuarios() {
@@ -1184,16 +1149,41 @@ function importarUsuarios() {
 }
 
 function exportarUsuarios() {
+    window.open('/admin/users/export', '_blank');
     mostrarAlerta('Exportando lista de usuários...', 'info');
 }
 
 function editarUsuario(id) {
-    mostrarAlerta(`Editando usuário ${id}...`, 'info');
+    // Redirecionar para editar usuário
+    window.location.href = `/admin/users/edit?id=${id}`;
 }
 
 function alterarStatusUsuario(id, status) {
     if (confirm(`Confirma a alteração de status do usuário ${id}?`)) {
-        mostrarAlerta(`Status do usuário ${id} alterado para ${status}`, 'sucesso');
+        fetch(`/admin/users/status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+                id: id,
+                status: status,
+                csrf_token: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mostrarAlerta(`Status do usuário alterado para ${status}`, 'sucesso');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                mostrarAlerta('Erro ao alterar status: ' + data.message, 'erro');
+            }
+        })
+        .catch(error => {
+            mostrarAlerta('Erro ao comunicar com servidor', 'erro');
+        });
     }
 }
 
@@ -1212,9 +1202,289 @@ function buscarUsuarios() {
     }
 }
 
-// Inicializar gráficos (placeholder)
+// Funções específicas das permissões
+function carregarUsuarios() {
+    fetch('/admin/permissions/users-api')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const select = document.getElementById('usuarioSelecionado');
+                select.innerHTML = '<option value="">Escolha um usuário para gerenciar permissões</option>';
+                
+                data.users.forEach(user => {
+                    const option = document.createElement('option');
+                    option.value = user.id;
+                    option.textContent = `${user.name} (${user.email}) - ${user.active_permissions_count} permissões`;
+                    select.appendChild(option);
+                });
+            }
+        })
+        .catch(error => console.error('Erro ao carregar usuários:', error));
+}
+
+function carregarPermissoesDoUsuario(userId) {
+    if (!userId) {
+        document.getElementById('interfacePermissoesSimples').style.display = 'none';
+        return;
+    }
+    
+    fetch(`/admin/permissions/user-permissions?user_id=${userId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Buscar nome do usuário
+                const select = document.getElementById('usuarioSelecionado');
+                const userName = select.options[select.selectedIndex].text.split(' (')[0];
+                document.getElementById('usuarioAtualNome').textContent = `Permissões de ${userName}`;
+                
+                // Renderizar permissões dos Dr. IA
+                const permissoesIA = document.getElementById('permissoesIA');
+                const permissoesSistema = document.getElementById('permissoesSistema');
+                
+                permissoesIA.innerHTML = '';
+                permissoesSistema.innerHTML = '';
+                
+                Object.values(data.modules).forEach(module => {
+                    const container = module.name.includes('ai_') ? permissoesIA : permissoesSistema;
+                    
+                    const moduleDiv = document.createElement('div');
+                    moduleDiv.className = 'permissao-modulo';
+                    moduleDiv.style.cssText = 'border: 1px solid var(--cinza-medio); border-radius: 8px; padding: 12px; background: white;';
+                    
+                    moduleDiv.innerHTML = `
+                        <h6 style="margin: 0 0 8px 0; color: var(--azul-saude);">${module.display_name}</h6>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                            ${module.permissions.map(perm => `
+                                <label style="display: flex; align-items: center; gap: 8px; font-size: 14px;">
+                                    <input type="checkbox" 
+                                           id="perm_${perm.id}" 
+                                           ${perm.has_permission ? 'checked' : ''}>
+                                    <span>${perm.display_name}</span>
+                                </label>
+                            `).join('')}
+                        </div>
+                    `;
+                    
+                    container.appendChild(moduleDiv);
+                });
+                
+                document.getElementById('interfacePermissoesSimples').style.display = 'block';
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao carregar permissões:', error);
+            mostrarAlerta('Erro ao carregar permissões do usuário', 'erro');
+        });
+}
+
+function salvarPermissoesSimples() {
+    const userId = document.getElementById('usuarioSelecionado').value;
+    if (!userId) return;
+    
+    const checkboxes = document.querySelectorAll('#interfacePermissoesSimples input[type="checkbox"]');
+    const permissions = [];
+    
+    checkboxes.forEach(checkbox => {
+        if (checkbox.checked) {
+            const permissionId = checkbox.id.replace('perm_', '');
+            permissions.push(permissionId);
+        }
+    });
+    
+    fetch('/admin/permissions/bulk-assign', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: new URLSearchParams({
+            user_id: userId,
+            permissions: permissions,
+            csrf_token: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarAlerta('Permissões salvas com sucesso!', 'sucesso');
+        } else {
+            mostrarAlerta('Erro ao salvar permissões: ' + data.message, 'erro');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarAlerta('Erro ao comunicar com servidor', 'erro');
+    });
+}
+
+function cancelarPermissoes() {
+    document.getElementById('usuarioSelecionado').value = '';
+    document.getElementById('interfacePermissoesSimples').style.display = 'none';
+}
+
+// Inicializar sistema
 document.addEventListener('DOMContentLoaded', function() {
+    // Carregar usuários para a aba de permissões
+    carregarUsuarios();
+    
     // Aqui seria implementada a inicialização dos gráficos
     // usando Chart.js ou similar
 });
+</script>
+
+<!-- Modal Criar Usuário -->
+<div id="modalNovoUsuario" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Criar Novo Usuário</h3>
+            <button type="button" class="modal-close" onclick="fecharModalNovoUsuario()">&times;</button>
+        </div>
+        
+        <form id="formNovoUsuario" method="POST" action="/admin/users/create">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="nome">Nome Completo *</label>
+                    <input type="text" id="nome" name="name" required maxlength="255">
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Email *</label>
+                    <input type="email" id="email" name="email" required maxlength="255">
+                </div>
+                
+                <div class="form-group">
+                    <label for="senha">Senha *</label>
+                    <input type="password" id="senha" name="password" required minlength="8">
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirmarSenha">Confirmar Senha *</label>
+                    <input type="password" id="confirmarSenha" name="password_confirm" required minlength="8">
+                </div>
+                
+                <div class="form-group">
+                    <label for="role">Perfil do Usuário</label>
+                    <select id="role" name="role">
+                        <option value="usuario">Fisioterapeuta</option>
+                        <option value="admin">Administrador</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="status">Status</label>
+                    <select id="status" name="status">
+                        <option value="active">Ativo</option>
+                        <option value="inactive">Inativo</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" name="force_password_change" value="1">
+                        Forçar mudança de senha no primeiro login
+                    </label>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-fisio btn-secundario" onclick="fecharModalNovoUsuario()">
+                    Cancelar
+                </button>
+                <button type="submit" class="btn-fisio btn-primario">
+                    <i class="fas fa-save"></i>
+                    Criar Usuário
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid var(--cinza-medio);
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: var(--azul-saude);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--cinza-escuro);
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.modal-footer {
+    padding: 20px;
+    border-top: 1px solid var(--cinza-medio);
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 600;
+    color: var(--cinza-escuro);
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid var(--cinza-medio);
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    border-color: var(--azul-saude);
+    outline: none;
+}
+</style>
+
+<script>
+function fecharModalNovoUsuario() {
+    document.getElementById('modalNovoUsuario').style.display = 'none';
+    document.getElementById('formNovoUsuario').reset();
+}
 </script>

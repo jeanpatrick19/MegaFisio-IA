@@ -106,4 +106,104 @@ class LogsController extends BaseController {
             return 'Nenhum';
         }
     }
+    
+    public function export() {
+        $this->requireRole('admin');
+        
+        $format = $_GET['format'] ?? 'json';
+        
+        try {
+            $stmt = $this->db->query("
+                SELECT 
+                    l.*,
+                    u.name as user_name,
+                    u.email as user_email
+                FROM activity_logs l
+                LEFT JOIN users u ON l.user_id = u.id
+                ORDER BY l.created_at DESC
+                LIMIT 5000
+            ");
+            $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            if ($format === 'csv') {
+                $this->exportCSV($logs);
+            } else {
+                $this->exportJSON($logs);
+            }
+            
+        } catch (Exception $e) {
+            $this->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+    
+    public function clear() {
+        $this->requireRole('admin');
+        
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->json(['success' => false, 'message' => 'Método não permitido'], 405);
+        }
+        
+        $input = json_decode(file_get_contents('php://input'), true);
+        $confirmacao = $input['confirmacao'] ?? '';
+        
+        if ($confirmacao !== 'CONFIRMAR') {
+            $this->json(['success' => false, 'message' => 'Confirmação inválida'], 400);
+        }
+        
+        try {
+            $stmt = $this->db->query("SELECT COUNT(*) FROM activity_logs");
+            $totalLogs = $stmt->fetchColumn();
+            
+            $this->db->exec("DELETE FROM activity_logs");
+            
+            $this->json([
+                'success' => true, 
+                'message' => "Todos os logs foram removidos. Total: {$totalLogs} registros."
+            ]);
+            
+        } catch (Exception $e) {
+            $this->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+    
+    private function exportCSV($logs) {
+        $filename = 'logs_sistema_' . date('Y-m-d_H-i-s') . '.csv';
+        
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        
+        $output = fopen('php://output', 'w');
+        fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
+        
+        fputcsv($output, ['ID', 'Data/Hora', 'Usuário', 'Email', 'Ação', 'Detalhes'], ';');
+        
+        foreach ($logs as $log) {
+            fputcsv($output, [
+                $log['id'],
+                $log['created_at'],
+                $log['user_name'] ?? 'Sistema',
+                $log['user_email'] ?? '',
+                $log['action'] ?? '',
+                $log['details'] ?? ''
+            ], ';');
+        }
+        
+        fclose($output);
+        exit;
+    }
+    
+    private function exportJSON($logs) {
+        $filename = 'logs_sistema_' . date('Y-m-d_H-i-s') . '.json';
+        
+        header('Content-Type: application/json; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        
+        echo json_encode([
+            'exported_at' => date('Y-m-d H:i:s'),
+            'exported_by' => $this->user['name'],
+            'total_logs' => count($logs),
+            'logs' => $logs
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        exit;
+    }
 }

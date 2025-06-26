@@ -12,6 +12,101 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     
+    <!-- CSS Global de Temas -->
+    <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/temas-globais.css">
+    
+    <!-- CSS CRÍTICO INLINE: Evitar flash completamente -->
+    <style id="critical-theme">
+        /* CSS base neutro - será sobrescrito pelo tema */
+        html, body { 
+            margin: 0; 
+            padding: 0; 
+            transition: none !important;
+            background-color: #f8fafc;
+            color: #1f2937;
+        }
+    </style>
+    
+    <!-- Script inline para aplicar tema IMEDIATAMENTE (sem flash) -->
+    <script>
+    (function() {
+        try {
+            var temaLocal = localStorage.getItem('tema-megafisio') || 'claro';
+            var htmlElement = document.documentElement;
+            
+            // CSS crítico para evitar flash
+            var criticalCSS = '';
+            
+            htmlElement.className = '';
+            switch(temaLocal) {
+                case 'escuro':
+                    criticalCSS = `
+                        html, body, * { 
+                            background-color: #0f172a !important; 
+                            color: #f8fafc !important;
+                            border-color: #475569 !important;
+                        }
+                        input, select, textarea, button {
+                            background-color: #1e293b !important;
+                            color: #f8fafc !important;
+                            border-color: #475569 !important;
+                        }
+                        .card, .card-fisio, div {
+                            background-color: #1e293b !important;
+                            color: #f8fafc !important;
+                        }
+                    `;
+                    htmlElement.classList.add('tema-escuro');
+                    break;
+                case 'auto':
+                    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                        criticalCSS = `
+                            html, body { 
+                                background-color: #0f172a !important; 
+                                color: #f8fafc !important;
+                            }
+                            * { background: transparent !important; }
+                        `;
+                        htmlElement.classList.add('tema-auto', 'tema-escuro');
+                    } else {
+                        criticalCSS = `
+                            html, body { 
+                                background-color: #f8fafc !important; 
+                                color: #1f2937 !important;
+                            }
+                        `;
+                        htmlElement.classList.add('tema-auto', 'tema-claro');
+                    }
+                    break;
+                default:
+                    criticalCSS = `
+                        html, body { 
+                            background-color: #f8fafc !important; 
+                            color: #1f2937 !important;
+                        }
+                    `;
+                    htmlElement.classList.add('tema-claro');
+            }
+            
+            // Injetar CSS crítico
+            var styleElement = document.getElementById('critical-theme');
+            if (styleElement) {
+                styleElement.innerHTML = criticalCSS;
+            }
+            
+            // Aplicar no body quando disponível
+            document.addEventListener('DOMContentLoaded', function() {
+                document.body.className = htmlElement.className;
+                // NÃO remover CSS crítico para evitar flash
+                // O CSS será sobrescrito pelos arquivos carregados
+            });
+            
+        } catch(e) {
+            document.documentElement.classList.add('tema-claro');
+        }
+    })();
+    </script>
+    
     <style>
         :root {
             /* Paleta Profissional de Saúde */
@@ -624,12 +719,12 @@
                     <?php if ($user['role'] === 'admin'): ?>
                         <a href="<?= BASE_URL ?>/admin/dashboard" class="menu-link <?= $currentPage === 'dashboard' ? 'ativo' : '' ?>">
                             <div class="menu-icone"><i class="fas fa-cogs"></i></div>
-                            <span class="menu-texto">Administração</span>
+                            <span class="menu-texto" data-translate="Administração">Administração</span>
                         </a>
                     <?php else: ?>
                         <a href="<?= BASE_URL ?>/dashboard" class="menu-link <?= $currentPage === 'dashboard' ? 'ativo' : '' ?>">
                             <div class="menu-icone"><i class="fas fa-home"></i></div>
-                            <span class="menu-texto">Página Inicial</span>
+                            <span class="menu-texto" data-translate="Página Inicial">Página Inicial</span>
                         </a>
                     <?php endif; ?>
                 </div>
@@ -638,12 +733,12 @@
                     <?php if ($user['role'] === 'admin'): ?>
                         <a href="<?= BASE_URL ?>/admin/ai" class="menu-link <?= $currentPage === 'ai' ? 'ativo' : '' ?>">
                             <div class="menu-icone"><i class="fas fa-brain"></i></div>
-                            <span class="menu-texto">IA do Sistema</span>
+                            <span class="menu-texto" data-translate="IA do Sistema">IA do Sistema</span>
                         </a>
                     <?php else: ?>
                         <a href="<?= BASE_URL ?>/ai" class="menu-link <?= $currentPage === 'ai' ? 'ativo' : '' ?>">
                             <div class="menu-icone"><i class="fas fa-brain"></i></div>
-                            <span class="menu-texto">Assistente IA</span>
+                            <span class="menu-texto" data-translate="Assistente IA">Assistente IA</span>
                         </a>
                     <?php endif; ?>
                 </div>
@@ -652,14 +747,14 @@
                 <div class="menu-item">
                     <a href="<?= BASE_URL ?>/admin/users" class="menu-link <?= $currentPage === 'users' ? 'ativo' : '' ?>">
                         <div class="menu-icone"><i class="fas fa-user-md"></i></div>
-                        <span class="menu-texto">Usuários</span>
+                        <span class="menu-texto" data-translate="Usuários">Usuários</span>
                     </a>
                 </div>
                 
                 <div class="menu-item">
                     <a href="<?= BASE_URL ?>/admin/settings" class="menu-link <?= $currentPage === 'settings' ? 'ativo' : '' ?>">
                         <div class="menu-icone"><i class="fas fa-cog"></i></div>
-                        <span class="menu-texto">Configurações</span>
+                        <span class="menu-texto" data-translate="Configurações">Configurações</span>
                     </a>
                 </div>
                 <?php endif; ?>
@@ -668,12 +763,12 @@
                     <?php if ($user['role'] === 'admin'): ?>
                         <a href="<?= BASE_URL ?>/admin/profile" class="menu-link <?= $currentPage === 'profile' ? 'ativo' : '' ?>">
                             <div class="menu-icone"><i class="fas fa-user-shield"></i></div>
-                            <span class="menu-texto">Perfil Admin</span>
+                            <span class="menu-texto" data-translate="Perfil Admin">Perfil Admin</span>
                         </a>
                     <?php else: ?>
                         <a href="<?= BASE_URL ?>/profile" class="menu-link <?= $currentPage === 'profile' ? 'ativo' : '' ?>">
                             <div class="menu-icone"><i class="fas fa-user-circle"></i></div>
-                            <span class="menu-texto">Meu Perfil</span>
+                            <span class="menu-texto" data-translate="Meu Perfil">Meu Perfil</span>
                         </a>
                     <?php endif; ?>
                 </div>
@@ -681,7 +776,7 @@
                 <div class="menu-item" style="margin-top: auto; padding-top: 24px;">
                     <a href="<?= BASE_URL ?>/logout" class="menu-link">
                         <div class="menu-icone"><i class="fas fa-sign-out-alt"></i></div>
-                        <span class="menu-texto">Sair</span>
+                        <span class="menu-texto" data-translate="Sair">Sair</span>
                     </a>
                 </div>
             </nav>
@@ -748,25 +843,6 @@
                         </div>
                         <?php endif; ?>
                         <script>
-                        // JavaScript inline para garantir execução
-                        function atualizarHora() {
-                            const agora = new Date();
-                            const opcoes = {
-                                timeZone: 'America/Sao_Paulo',
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                                second: '2-digit',
-                                hour12: false
-                            };
-                            const dataHoraFormatada = agora.toLocaleString('pt-BR', opcoes);
-                            document.getElementById('dataHoraTexto').textContent = dataHoraFormatada;
-                        }
-                        atualizarHora();
-                        setInterval(atualizarHora, 1000);
-                        
                         // Função para ir ao perfil
                         function irParaPerfil() {
                             // Detectar contexto (admin ou user)
@@ -879,5 +955,10 @@
         });
 
     </script>
+    
+    <!-- JavaScript Global de Traduções e Temas -->
+    <script src="<?= BASE_URL ?>/public/assets/js/traducoes-completas.js"></script>
+    <script src="<?= BASE_URL ?>/public/assets/js/temas-globais.js"></script>
+    <script src="<?= BASE_URL ?>/public/assets/js/formato-data-hora.js"></script>
 </body>
 </html>

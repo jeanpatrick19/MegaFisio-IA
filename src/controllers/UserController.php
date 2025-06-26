@@ -61,11 +61,15 @@ class UserController extends BaseController {
         // Calcular paginação
         $totalPages = ceil($total / $limit);
         
+        // Buscar estatísticas reais
+        $stats = $this->getUserStats();
+        
         $this->render('admin/gestao-usuarios-completa', [
             'title' => 'Gestão de Usuários',
             'currentPage' => 'users',
             'user' => $this->user,
             'users' => $users,
+            'stats' => $stats,
             'total' => $total,
             'page' => $page,
             'totalPages' => $totalPages,
@@ -406,4 +410,37 @@ class UserController extends BaseController {
         return $stmt->fetch();
     }
     
+    private function getUserStats() {
+        try {
+            $stats = [];
+            
+            // Contar administradores
+            $stmt = $this->db->query("SELECT COUNT(*) FROM users WHERE role = 'admin' AND deleted_at IS NULL");
+            $stats['admins'] = $stmt->fetchColumn();
+            
+            // Contar profissionais
+            $stmt = $this->db->query("SELECT COUNT(*) FROM users WHERE role = 'usuario' AND deleted_at IS NULL");
+            $stats['professionals'] = $stmt->fetchColumn();
+            
+            // Contar usuários online (últimos 15 minutos)
+            $stmt = $this->db->query("
+                SELECT COUNT(DISTINCT user_id) FROM user_sessions 
+                WHERE last_activity > UNIX_TIMESTAMP() - 900
+            ");
+            $stats['online'] = $stmt->fetchColumn();
+            
+            // Contar usuários bloqueados
+            $stmt = $this->db->query("SELECT COUNT(*) FROM users WHERE status = 'inactive' AND deleted_at IS NULL");
+            $stats['blocked'] = $stmt->fetchColumn();
+            
+            return $stats;
+        } catch (Exception $e) {
+            return [
+                'admins' => 0,
+                'professionals' => 0,
+                'online' => 0,
+                'blocked' => 0
+            ];
+        }
+    }
 }

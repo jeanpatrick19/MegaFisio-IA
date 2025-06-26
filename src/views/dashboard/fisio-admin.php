@@ -15,7 +15,7 @@
             <div class="stat-valor"><?= $stats['total_users'] ?? 0 ?></div>
             <div class="stat-label-escuro">Total de Usuários</div>
             <div class="stat-variacao positiva">
-                <i class="fas fa-arrow-up"></i> 12% este mês
+                <i class="fas fa-chart-line"></i> <?= ($stats['users_growth'] ?? 0) > 0 ? '+' . $stats['users_growth'] . '%' : 'Estável' ?>
             </div>
         </div>
     </div>
@@ -29,7 +29,7 @@
             <div class="stat-valor"><?= $stats['ai_requests_today'] ?? 0 ?></div>
             <div class="stat-label-escuro">Avaliações IA Hoje</div>
             <div class="stat-variacao positiva">
-                <i class="fas fa-arrow-up"></i> +8 vs ontem
+                <i class="fas fa-chart-line"></i> <?= ($stats['ai_growth'] ?? 0) > 0 ? '+' . $stats['ai_growth'] . ' vs ontem' : 'Estável' ?>
             </div>
         </div>
     </div>
@@ -54,10 +54,10 @@
             <i class="fas fa-heartbeat"></i>
         </div>
         <div class="card-conteudo-stat">
-            <div class="stat-valor">98%</div>
+            <div class="stat-valor"><?= $stats['system_health'] ?? '100' ?>%</div>
             <div class="stat-label-escuro">Saúde do Sistema</div>
             <div class="stat-variacao positiva">
-                <i class="fas fa-check-circle"></i> Excelente
+                <i class="fas fa-check-circle"></i> <?= ($stats['system_health'] ?? 100) >= 95 ? 'Excelente' : (($stats['system_health'] ?? 100) >= 80 ? 'Bom' : 'Atenção') ?>
             </div>
         </div>
     </div>
@@ -171,12 +171,13 @@
             
             <div class="lista-modulos">
                 <?php 
+                // Buscar dados reais de uso dos módulos IA
                 $modulosIA = [
-                    ['nome' => 'Fisio Ortopédica', 'icone' => 'fa-bone', 'cor' => 'ortopedica', 'uso' => rand(15, 45)],
-                    ['nome' => 'Fisio Neurológica', 'icone' => 'fa-brain', 'cor' => 'neurologica', 'uso' => rand(10, 30)],
-                    ['nome' => 'Fisio Respiratória', 'icone' => 'fa-lungs', 'cor' => 'respiratoria', 'uso' => rand(8, 25)],
-                    ['nome' => 'Fisio Geriátrica', 'icone' => 'fa-user-clock', 'cor' => 'geriatrica', 'uso' => rand(12, 35)],
-                    ['nome' => 'Fisio Pediátrica', 'icone' => 'fa-baby', 'cor' => 'pediatrica', 'uso' => rand(5, 20)]
+                    ['nome' => 'Fisio Ortopédica', 'icone' => 'fa-bone', 'cor' => 'ortopedica', 'uso' => $stats['ai_ortopedica'] ?? 0],
+                    ['nome' => 'Fisio Neurológica', 'icone' => 'fa-brain', 'cor' => 'neurologica', 'uso' => $stats['ai_neurologica'] ?? 0],
+                    ['nome' => 'Fisio Respiratória', 'icone' => 'fa-lungs', 'cor' => 'respiratoria', 'uso' => $stats['ai_respiratoria'] ?? 0],
+                    ['nome' => 'Fisio Geriátrica', 'icone' => 'fa-user-clock', 'cor' => 'geriatrica', 'uso' => $stats['ai_geriatrica'] ?? 0],
+                    ['nome' => 'Fisio Pediátrica', 'icone' => 'fa-baby', 'cor' => 'pediatrica', 'uso' => $stats['ai_pediatrica'] ?? 0]
                 ];
                 foreach ($modulosIA as $modulo): 
                 ?>
@@ -257,9 +258,9 @@
                     </div>
                     <div class="status-card-body">
                         <h4>Armazenamento</h4>
-                        <span class="status-valor aviso">78% usado</span>
+                        <span class="status-valor <?= ($stats['storage_percent'] ?? 0) > 80 ? 'aviso' : 'online' ?>"><?= $stats['storage_percent'] ?? 0 ?>% usado</span>
                         <div class="progress-bar">
-                            <div class="progress-fill" style="width: 78%"></div>
+                            <div class="progress-fill" style="width: <?= $stats['storage_percent'] ?? 0 ?>%"></div>
                         </div>
                     </div>
                 </div>

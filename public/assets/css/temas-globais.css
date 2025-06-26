@@ -1,0 +1,336 @@
+/**
+ * Sistema de Temas Globais - MegaFisio IA
+ * SOLUÇÃO SIMPLES: 3 paletas que funcionam para TUDO
+ */
+
+/* =================== TEMA CLARO (PADRÃO) =================== */
+:root,
+html,
+body,
+html.tema-claro,
+body.tema-claro,
+html.tema-claro *,
+body.tema-claro * {
+    --fundo: #ffffff;
+    --fundo-secundario: #f8fafc;
+    --fundo-terciario: #f1f5f9;
+    --texto: #1f2937;
+    --texto-secundario: #6b7280;
+    --border: #e5e7eb;
+    --sombra: rgba(0, 0, 0, 0.1);
+    --primario: #1e3a8a;
+    --primario-claro: #dbeafe;
+    --sucesso: #10b981;
+    --alerta: #f59e0b;
+    --erro: #ef4444;
+    --info: #3b82f6;
+}
+
+/* =================== TEMA ESCURO =================== */
+html.tema-escuro,
+body.tema-escuro,
+html.tema-escuro *,
+body.tema-escuro * {
+    --fundo: #0f172a;
+    --fundo-secundario: #1e293b;
+    --fundo-terciario: #334155;
+    --texto: #f8fafc;
+    --texto-secundario: #cbd5e1;
+    --border: #475569;
+    --sombra: rgba(0, 0, 0, 0.3);
+    --primario: #3b82f6;
+    --primario-claro: #1e3a8a;
+    --sucesso: #10b981;
+    --alerta: #f59e0b;
+    --erro: #f87171;
+    --info: #60a5fa;
+}
+
+/* =================== APLICAÇÃO GLOBAL PARA TUDO =================== */
+
+/* FUNDO DA PÁGINA */
+html,
+body {
+    background-color: var(--fundo) !important;
+    color: var(--texto) !important;
+    transition: none !important;
+}
+
+/* TODOS OS INPUTS, SELECTS E TEXTAREAS */
+input,
+select,
+textarea,
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+input[type="number"],
+input[type="tel"],
+input[type="url"],
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+.fisio-input,
+.fisio-select {
+    background-color: var(--fundo) !important;
+    color: var(--texto) !important;
+    border-color: var(--border) !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    border-color: var(--primario) !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+/* TODOS OS BOTÕES */
+button,
+.btn,
+.btn-fisio,
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
+    background-color: var(--fundo-secundario) !important;
+    color: var(--texto) !important;
+    border-color: var(--border) !important;
+}
+
+.btn-primary,
+.btn-fisio.btn-primario {
+    background-color: var(--primario) !important;
+    color: white !important;
+    border-color: var(--primario) !important;
+}
+
+/* TODOS OS CARDS E CONTAINERS */
+.card,
+.card-fisio,
+.dashboard-card,
+.stat-card,
+.analise-card,
+div[class*="card"],
+.container,
+.panel,
+.box,
+.widget {
+    background-color: var(--fundo-secundario) !important;
+    color: var(--texto) !important;
+    border-color: var(--border) !important;
+}
+
+/* TABELAS */
+.table,
+.fisio-table,
+table {
+    background-color: var(--fundo) !important;
+    color: var(--texto) !important;
+}
+
+.table th,
+.fisio-table th,
+table th {
+    background-color: var(--fundo-terciario) !important;
+    color: var(--texto) !important;
+    border-color: var(--border) !important;
+}
+
+.table td,
+.fisio-table td,
+table td {
+    border-color: var(--border) !important;
+}
+
+/* SIDEBAR E MENU */
+.sidebar,
+.menu-lateral,
+.nav-sidebar {
+    background-color: var(--fundo-secundario) !important;
+    border-color: var(--border) !important;
+}
+
+.menu-link,
+.sidebar-item,
+.menu-item,
+.nav-item {
+    color: var(--texto-secundario) !important;
+}
+
+.menu-link:hover,
+.sidebar-item:hover,
+.menu-item:hover,
+.nav-item:hover {
+    background-color: rgba(59, 130, 246, 0.1) !important;
+    color: var(--primario) !important;
+}
+
+.menu-link.ativo,
+.sidebar-item.active,
+.menu-item.active,
+.nav-item.active {
+    background-color: var(--primario) !important;
+    color: white !important;
+}
+
+/* MODAIS */
+.modal-content,
+.modal-fisio {
+    background-color: var(--fundo) !important;
+    color: var(--texto) !important;
+    border-color: var(--border) !important;
+}
+
+.modal-header,
+.modal-footer {
+    border-color: var(--border) !important;
+}
+
+/* DROPDOWNS */
+.dropdown-menu {
+    background-color: var(--fundo) !important;
+    border-color: var(--border) !important;
+}
+
+.dropdown-item {
+    color: var(--texto) !important;
+}
+
+.dropdown-item:hover {
+    background-color: var(--fundo-terciario) !important;
+}
+
+/* ALERTAS E MENSAGENS */
+.alert {
+    border-color: var(--border) !important;
+}
+
+.alert-success {
+    background-color: rgba(16, 185, 129, 0.1) !important;
+    color: var(--sucesso) !important;
+    border-color: var(--sucesso) !important;
+}
+
+.alert-warning {
+    background-color: rgba(245, 158, 11, 0.1) !important;
+    color: var(--alerta) !important;
+    border-color: var(--alerta) !important;
+}
+
+.alert-danger {
+    background-color: rgba(239, 68, 68, 0.1) !important;
+    color: var(--erro) !important;
+    border-color: var(--erro) !important;
+}
+
+/* BADGES */
+.badge {
+    color: white !important;
+}
+
+.badge.badge-success {
+    background-color: var(--sucesso) !important;
+}
+
+.badge.badge-warning {
+    background-color: var(--alerta) !important;
+}
+
+.badge.badge-danger {
+    background-color: var(--erro) !important;
+}
+
+.badge.badge-info {
+    background-color: var(--info) !important;
+}
+
+/* FORÇAR TEMA ESCURO EM TODOS OS ELEMENTOS */
+html.tema-escuro,
+body.tema-escuro {
+    background-color: #0f172a !important;
+    color: #f8fafc !important;
+}
+
+html.tema-escuro *,
+body.tema-escuro * {
+    background-color: transparent !important;
+    color: #f8fafc !important;
+    border-color: #475569 !important;
+}
+
+html.tema-escuro input,
+html.tema-escuro select,
+html.tema-escuro textarea,
+body.tema-escuro input,
+body.tema-escuro select,
+body.tema-escuro textarea {
+    background-color: #1e293b !important;
+    color: #f8fafc !important;
+    border-color: #475569 !important;
+}
+
+html.tema-escuro .card,
+html.tema-escuro .card-fisio,
+html.tema-escuro div[class*="card"],
+html.tema-escuro .container,
+html.tema-escuro .panel,
+body.tema-escuro .card,
+body.tema-escuro .card-fisio,
+body.tema-escuro div[class*="card"],
+body.tema-escuro .container,
+body.tema-escuro .panel {
+    background-color: #1e293b !important;
+    color: #f8fafc !important;
+}
+
+html.tema-escuro button,
+html.tema-escuro .btn,
+body.tema-escuro button,
+body.tema-escuro .btn {
+    background-color: #334155 !important;
+    color: #f8fafc !important;
+    border-color: #475569 !important;
+}
+
+/* =================== TEMA AUTOMÁTICO =================== */
+@media (prefers-color-scheme: dark) {
+    html.tema-auto,
+    body.tema-auto {
+        --fundo: #0f172a;
+        --fundo-secundario: #1e293b;
+        --fundo-terciario: #334155;
+        --texto: #f8fafc;
+        --texto-secundario: #cbd5e1;
+        --border: #475569;
+        --sombra: rgba(0, 0, 0, 0.3);
+        --primario: #3b82f6;
+        --primario-claro: #1e3a8a;
+        --sucesso: #10b981;
+        --alerta: #f59e0b;
+        --erro: #f87171;
+        --info: #60a5fa;
+    }
+    
+    html.tema-auto,
+    body.tema-auto {
+        background-color: #0f172a !important;
+        color: #f8fafc !important;
+    }
+    
+    html.tema-auto *,
+    body.tema-auto * {
+        background-color: transparent !important;
+        color: #f8fafc !important;
+        border-color: #475569 !important;
+    }
+    
+    html.tema-auto input,
+    html.tema-auto select,
+    html.tema-auto textarea,
+    body.tema-auto input,
+    body.tema-auto select,
+    body.tema-auto textarea {
+        background-color: #1e293b !important;
+        color: #f8fafc !important;
+        border-color: #475569 !important;
+    }
+}

@@ -3,8 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- CSS CRÍTICO INLINE: Evitar flash completamente -->
+    <style id="critical-theme">
+        /* CSS base neutro - será sobrescrito pelo tema */
+        html, body { 
+            margin: 0; 
+            padding: 0; 
+            transition: none !important;
+        }
+    </style>
+    
+    <!-- SCRIPT CRÍTICO: Aplicar tema ANTES de qualquer CSS -->
+    <script>
+    (function() {
+        try {
+            var temaLocal = localStorage.getItem('tema-megafisio') || 'claro';
+            var htmlElement = document.documentElement;
+            
+            // CSS crítico para evitar flash
+            var criticalCSS = '';
+            
+            switch(temaLocal) {
+                case 'escuro':
+                    htmlElement.classList.add('tema-escuro');
+                    break;
+                case 'auto':
+                    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                        htmlElement.classList.add('tema-auto', 'tema-escuro');
+                    } else {
+                        htmlElement.classList.add('tema-auto', 'tema-claro');
+                    }
+                    break;
+                default:
+                    htmlElement.classList.add('tema-claro');
+            }
+            
+            // Aplicar no body quando disponível
+            document.addEventListener('DOMContentLoaded', function() {
+                document.body.className = htmlElement.className;
+                // NÃO remover CSS crítico para evitar flash
+                // O CSS será sobrescrito pelos arquivos carregados
+            });
+            
+        } catch(e) {
+            document.documentElement.classList.add('tema-claro');
+        }
+    })();
+    </script>
+    
     <title>MegaFisio IA - Sistema Administrativo</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/sistema-unificado.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/temas-globais.css">
+    
     <style>
         * {
             margin: 0;
@@ -14,8 +66,6 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-            color: #ffffff;
             min-height: 100vh;
         }
 

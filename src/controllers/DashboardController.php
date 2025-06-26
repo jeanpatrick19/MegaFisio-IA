@@ -32,7 +32,16 @@ class DashboardController extends BaseController {
             'total_users' => $this->getTotalUsers(),
             'active_sessions' => $this->getActiveSessions(),
             'ai_requests_today' => $this->getAIRequestsToday(),
-            'system_health' => $this->getSystemHealth()
+            'system_health' => $this->getSystemHealth(),
+            'storage_percent' => $this->getStoragePercent(),
+            'users_growth' => $this->getUsersGrowth(),
+            'ai_growth' => $this->getAIGrowth(),
+            // Dados específicos dos módulos IA
+            'ai_ortopedica' => $this->getAIUsageByCategory('ortopedica'),
+            'ai_neurologica' => $this->getAIUsageByCategory('neurologica'),
+            'ai_respiratoria' => $this->getAIUsageByCategory('respiratoria'),
+            'ai_geriatrica' => $this->getAIUsageByCategory('geriatrica'),
+            'ai_pediatrica' => $this->getAIUsageByCategory('pediatrica')
         ];
         
         // Últimas atividades
@@ -188,5 +197,72 @@ class DashboardController extends BaseController {
         ");
         $stmt->execute([$this->user['id']]);
         return $stmt->fetchAll();
+    }
+    
+    private function getStoragePercent() {
+        // Calcular porcentagem de armazenamento baseado no tamanho do banco
+        try {
+            $stmt = $this->db->query("
+                SELECT ROUND(((data_length + index_length) / 1024 / 1024), 2) AS db_size_mb
+                FROM information_schema.tables 
+                WHERE table_schema = DATABASE()
+            ");
+            $sizeResult = $stmt->fetchAll();
+            $totalSize = array_sum(array_column($sizeResult, 'db_size_mb'));
+            
+            // Assumir limite de 1GB = 1024MB
+            $maxSize = 1024;
+            return min(100, round(($totalSize / $maxSize) * 100));
+        } catch (Exception $e) {
+            return 25; // Valor padrão seguro
+        }
+    }
+    
+    private function getUsersGrowth() {
+        try {
+            $stmt = $this->db->query("
+                SELECT 
+                    (SELECT COUNT(*) FROM users WHERE created_at >= CURDATE() - INTERVAL 30 DAY) as this_month,
+                    (SELECT COUNT(*) FROM users WHERE created_at >= CURDATE() - INTERVAL 60 DAY AND created_at < CURDATE() - INTERVAL 30 DAY) as last_month
+            ");
+            $result = $stmt->fetch();
+            
+            if ($result['last_month'] == 0) {
+                return $result['this_month'] > 0 ? 100 : 0;
+            }
+            
+            return round((($result['this_month'] - $result['last_month']) / $result['last_month']) * 100);
+        } catch (Exception $e) {
+            return 0;
+        }
+    }
+    
+    private function getAIGrowth() {
+        try {
+            $stmt = $this->db->query("
+                SELECT 
+                    (SELECT COUNT(*) FROM user_logs WHERE acao LIKE '%ia%' AND data_hora >= CURDATE()) as today,
+                    (SELECT COUNT(*) FROM user_logs WHERE acao LIKE '%ia%' AND data_hora >= CURDATE() - INTERVAL 1 DAY AND data_hora < CURDATE()) as yesterday
+            ");
+            $result = $stmt->fetch();
+            
+            return $result['today'] - $result['yesterday'];
+        } catch (Exception $e) {
+            return 0;
+        }
+    }
+    
+    private function getAIUsageByCategory($categoria) {
+        try {
+            $stmt = $this->db->prepare("
+                SELECT COUNT(*) FROM user_logs 
+                WHERE (detalhes LIKE ? OR acao LIKE ?) 
+                AND data_hora >= CURDATE()
+            ");
+            $stmt->execute(["%{$categoria}%", "%{$categoria}%"]);
+            return $stmt->fetchColumn();
+        } catch (Exception $e) {
+            return 0;
+        }
     }
 }

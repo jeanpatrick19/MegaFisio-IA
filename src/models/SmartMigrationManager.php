@@ -39,6 +39,39 @@ class SmartMigrationManager {
         
         // Definições COMPLETAS de todas as tabelas do sistema
         $tableDefinitions = [
+            'users' => [
+                'id' => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'email' => 'VARCHAR(255) NOT NULL UNIQUE',
+                'password' => 'VARCHAR(255) NOT NULL',
+                'name' => 'VARCHAR(255) NOT NULL',
+                'role' => "ENUM('admin', 'professional', 'patient') DEFAULT 'professional'",
+                'status' => "ENUM('active', 'inactive', 'suspended') DEFAULT 'active'",
+                'email_verified_at' => 'TIMESTAMP NULL',
+                'remember_token' => 'VARCHAR(100) NULL',
+                'first_login' => 'BOOLEAN DEFAULT TRUE',
+                'last_login' => 'TIMESTAMP NULL',
+                'password_reset_token' => 'VARCHAR(255) NULL',
+                'password_reset_expires' => 'TIMESTAMP NULL',
+                'login_attempts' => 'INT DEFAULT 0',
+                'locked_until' => 'TIMESTAMP NULL',
+                'phone' => 'VARCHAR(20) NULL',
+                'department' => 'VARCHAR(100) NULL',
+                'position' => 'VARCHAR(100) NULL',
+                'manager_id' => 'INT NULL',
+                'notes' => 'TEXT NULL',
+                'must_change_password' => 'BOOLEAN DEFAULT FALSE',
+                'last_password_change' => 'TIMESTAMP NULL',
+                'security_question' => 'VARCHAR(255) NULL',
+                'security_answer' => 'VARCHAR(255) NULL',
+                'account_locked' => 'BOOLEAN DEFAULT FALSE',
+                'lock_reason' => 'VARCHAR(255) NULL',
+                'failed_login_attempts' => 'INT DEFAULT 0',
+                'last_failed_login' => 'TIMESTAMP NULL',
+                'timezone' => "VARCHAR(50) DEFAULT 'America/Sao_Paulo'",
+                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'updated_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+                'deleted_at' => 'TIMESTAMP NULL'
+            ],
             'user_profiles_extended' => [
                 'id' => 'INT AUTO_INCREMENT PRIMARY KEY',
                 'user_id' => 'INT NOT NULL UNIQUE',
@@ -221,6 +254,84 @@ class SmartMigrationManager {
                 'description' => 'TEXT',
                 'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
                 'updated_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'
+            ],
+            'user_roles' => [
+                'id' => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'name' => 'VARCHAR(50) NOT NULL UNIQUE',
+                'display_name' => 'VARCHAR(100) NOT NULL',
+                'description' => 'TEXT NULL',
+                'is_system' => 'BOOLEAN DEFAULT FALSE',
+                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'updated_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'
+            ],
+            'permissions' => [
+                'id' => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'name' => 'VARCHAR(100) NOT NULL UNIQUE',
+                'display_name' => 'VARCHAR(150) NOT NULL',
+                'description' => 'TEXT NULL',
+                'module' => 'VARCHAR(50) NOT NULL',
+                'action' => 'VARCHAR(50) NOT NULL',
+                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+            ],
+            'role_permissions' => [
+                'id' => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'role_id' => 'INT NOT NULL',
+                'permission_id' => 'INT NOT NULL',
+                'granted_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'granted_by' => 'INT NULL'
+            ],
+            'user_permissions_detailed' => [
+                'id' => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'user_id' => 'INT NOT NULL',
+                'permission_id' => 'INT NOT NULL',
+                'granted' => 'BOOLEAN DEFAULT TRUE',
+                'granted_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'granted_by' => 'INT NULL',
+                'expires_at' => 'TIMESTAMP NULL'
+            ],
+            'user_access_logs' => [
+                'id' => 'BIGINT AUTO_INCREMENT PRIMARY KEY',
+                'user_id' => 'INT NOT NULL',
+                'action_type' => 'VARCHAR(50) NOT NULL',
+                'action_details' => 'TEXT NULL',
+                'ip_address' => 'VARCHAR(45) NULL',
+                'user_agent' => 'TEXT NULL',
+                'success' => 'BOOLEAN DEFAULT TRUE',
+                'occurred_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+            ],
+            'user_audit_trail' => [
+                'id' => 'BIGINT AUTO_INCREMENT PRIMARY KEY',
+                'user_id' => 'INT NOT NULL',
+                'action' => 'VARCHAR(100) NOT NULL',
+                'table_name' => 'VARCHAR(100) NULL',
+                'record_id' => 'INT NULL',
+                'old_values' => 'JSON NULL',
+                'new_values' => 'JSON NULL',
+                'performed_by' => 'INT NULL',
+                'performed_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+            ],
+            'user_lgpd_consents' => [
+                'id' => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'user_id' => 'INT NOT NULL',
+                'consent_type' => 'VARCHAR(50) NOT NULL',
+                'consent_version' => 'VARCHAR(10) DEFAULT "1.0"',
+                'consent_text' => 'TEXT NOT NULL',
+                'consented' => 'BOOLEAN DEFAULT FALSE',
+                'consented_at' => 'TIMESTAMP NULL',
+                'revoked_at' => 'TIMESTAMP NULL',
+                'ip_address' => 'VARCHAR(45) NULL',
+                'user_agent' => 'TEXT NULL'
+            ],
+            'user_data_requests' => [
+                'id' => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'user_id' => 'INT NOT NULL',
+                'request_type' => "ENUM('export', 'portability', 'deletion', 'correction') NOT NULL",
+                'status' => "ENUM('pending', 'processing', 'completed', 'failed', 'cancelled') DEFAULT 'pending'",
+                'request_details' => 'JSON NULL',
+                'requested_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'processed_at' => 'TIMESTAMP NULL',
+                'processed_by' => 'INT NULL',
+                'completion_notes' => 'TEXT NULL'
             ]
         ];
         
@@ -335,7 +446,7 @@ class SmartMigrationManager {
             email VARCHAR(255) NOT NULL UNIQUE,
             password VARCHAR(255) NOT NULL,
             name VARCHAR(255) NOT NULL,
-            role ENUM('admin', 'usuario', 'professional', 'patient') DEFAULT 'usuario',
+            role ENUM('admin', 'professional', 'patient') DEFAULT 'professional',
             status ENUM('active', 'inactive', 'suspended') DEFAULT 'active',
             email_verified_at TIMESTAMP NULL,
             remember_token VARCHAR(100) NULL,
@@ -496,17 +607,37 @@ class SmartMigrationManager {
         $this->db->query($sql);
     }
     
-    private function createUserSessionsTable() {
+    public function createUserSessionsTable() {
+        // Verificar se a tabela existe com estrutura errada e corrigir
+        try {
+            $stmt = $this->db->prepare("SHOW COLUMNS FROM user_sessions LIKE 'payload'");
+            $stmt->execute();
+            
+            if ($stmt->rowCount() > 0) {
+                // Tabela antiga existe com estrutura errada - recriar
+                $this->db->query("DROP TABLE IF EXISTS user_sessions");
+            }
+        } catch (Exception $e) {
+            // Tabela não existe, continuar normalmente
+        }
+        
         $sql = "CREATE TABLE IF NOT EXISTS user_sessions (
             id VARCHAR(128) PRIMARY KEY,
-            user_id INT NULL,
-            ip_address VARCHAR(45) NULL,
+            user_id INT NOT NULL,
             user_agent TEXT,
-            payload TEXT NOT NULL,
-            last_activity INT NOT NULL,
+            ip_address VARCHAR(45),
+            location VARCHAR(255),
+            device_type VARCHAR(50),
+            browser VARCHAR(100),
+            os VARCHAR(100),
+            is_current BOOLEAN DEFAULT FALSE,
+            is_active BOOLEAN DEFAULT TRUE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            expires_at TIMESTAMP NULL,
             INDEX idx_user_id (user_id),
-            INDEX idx_last_activity (last_activity)
+            INDEX idx_is_active (is_active),
+            INDEX idx_expires_at (expires_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
         
         $this->db->query($sql);
@@ -1138,11 +1269,31 @@ Seja preciso e baseie-se nas diretrizes oficiais da CID-10.',
                 'name' => 'VARCHAR(255) NOT NULL',
                 'role' => "ENUM('admin', 'professional', 'patient') DEFAULT 'professional'",
                 'status' => "ENUM('active', 'inactive', 'suspended') DEFAULT 'active'",
+                'email_verified_at' => 'TIMESTAMP NULL',
+                'remember_token' => 'VARCHAR(100) NULL',
                 'first_login' => 'BOOLEAN DEFAULT TRUE',
+                'last_login' => 'TIMESTAMP NULL',
+                'password_reset_token' => 'VARCHAR(255) NULL',
+                'password_reset_expires' => 'TIMESTAMP NULL',
+                'login_attempts' => 'INT DEFAULT 0',
+                'locked_until' => 'TIMESTAMP NULL',
+                'phone' => 'VARCHAR(20) NULL',
+                'department' => 'VARCHAR(100) NULL',
+                'position' => 'VARCHAR(100) NULL',
+                'manager_id' => 'INT NULL',
+                'notes' => 'TEXT NULL',
+                'must_change_password' => 'BOOLEAN DEFAULT FALSE',
+                'last_password_change' => 'TIMESTAMP NULL',
+                'security_question' => 'VARCHAR(255) NULL',
+                'security_answer' => 'VARCHAR(255) NULL',
+                'account_locked' => 'BOOLEAN DEFAULT FALSE',
+                'lock_reason' => 'VARCHAR(255) NULL',
+                'failed_login_attempts' => 'INT DEFAULT 0',
+                'last_failed_login' => 'TIMESTAMP NULL',
+                'timezone' => "VARCHAR(50) DEFAULT 'America/Sao_Paulo'",
                 'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
                 'updated_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
-                'deleted_at' => 'TIMESTAMP NULL',
-                'last_login' => 'TIMESTAMP NULL'
+                'deleted_at' => 'TIMESTAMP NULL'
             ],
             'ai_prompts' => [
                 'id' => 'INT AUTO_INCREMENT PRIMARY KEY',
@@ -1214,6 +1365,7 @@ Seja preciso e baseie-se nas diretrizes oficiais da CID-10.',
                 'newsletter' => 'BOOLEAN DEFAULT FALSE',
                 'two_factor_enabled' => 'BOOLEAN DEFAULT FALSE',
                 'two_factor_secret' => 'VARCHAR(32) NULL',
+                'backup_codes' => 'JSON NULL',
                 'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
                 'updated_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'
             ]

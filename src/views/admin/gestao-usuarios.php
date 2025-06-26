@@ -1,8 +1,8 @@
 <?php if (!defined('PUBLIC_ACCESS')) die('Acesso negado'); ?>
 
 <!-- Título da Página -->
-<h1 class="titulo-pagina">Gestão de Usuários</h1>
-<p class="subtitulo-pagina-escuro">Gerencie fisioterapeutas, configure permissões e monitore atividades dos usuários</p>
+<h1 class="titulo-pagina" data-translate="Gestão de Usuários">Gestão de Usuários</h1>
+<p class="subtitulo-pagina-escuro" data-translate="Gerencie fisioterapeutas, configure permissões e monitore atividades dos usuários">Gerencie fisioterapeutas, configure permissões e monitore atividades dos usuários</p>
 
 <!-- Estatísticas dos Usuários -->
 <div class="usuarios-stats">
@@ -12,7 +12,7 @@
         </div>
         <div class="stat-info">
             <div class="stat-numero"><?= $stats['admins'] ?? 1 ?></div>
-            <div class="stat-label-escuro">Administradores</div>
+            <div class="stat-label-escuro" data-translate="Administradores">Administradores</div>
         </div>
     </div>
     
@@ -22,7 +22,7 @@
         </div>
         <div class="stat-info">
             <div class="stat-numero"><?= $stats['professionals'] ?? 0 ?></div>
-            <div class="stat-label-escuro">Fisioterapeutas</div>
+            <div class="stat-label-escuro" data-translate="Fisioterapeutas">Fisioterapeutas</div>
         </div>
     </div>
     

@@ -385,16 +385,16 @@
             
             <div class="twofa-section">
                 <div class="twofa-status">
-                    <div class="status-indicator <?= $user['two_factor_enabled'] ?? false ? 'ativo' : 'inativo' ?>">
-                        <i class="fas fa-<?= $user['two_factor_enabled'] ?? false ? 'shield-alt' : 'shield' ?>"></i>
+                    <div class="status-indicator <?= $userProfile['two_factor_enabled'] ?? false ? 'ativo' : 'inativo' ?>">
+                        <i class="fas fa-<?= $userProfile['two_factor_enabled'] ?? false ? 'shield-alt' : 'shield' ?>"></i>
                     </div>
                     <div class="status-info">
-                        <h4><?= $user['two_factor_enabled'] ?? false ? '2FA Ativo' : '2FA Inativo' ?></h4>
-                        <p><?= $user['two_factor_enabled'] ?? false ? 'Sua conta está protegida' : 'Adicione uma camada extra de segurança' ?></p>
+                        <h4><?= $userProfile['two_factor_enabled'] ?? false ? '2FA Ativo' : '2FA Inativo' ?></h4>
+                        <p><?= $userProfile['two_factor_enabled'] ?? false ? 'Sua conta está protegida' : 'Adicione uma camada extra de segurança' ?></p>
                     </div>
                 </div>
                 
-                <?php if ($user['two_factor_enabled'] ?? false): ?>
+                <?php if ($userProfile['two_factor_enabled'] ?? false): ?>
                     <button class="btn-fisio btn-secundario" onclick="desativar2FA()">
                         <i class="fas fa-times"></i>
                         Desativar 2FA
@@ -415,44 +415,27 @@
                     <i class="fas fa-laptop"></i>
                     <span>Sessões Ativas</span>
                 </div>
+                <button class="btn-fisio btn-secundario btn-pequeno" onclick="carregarSessoes()">
+                    <i class="fas fa-sync-alt"></i>
+                    Atualizar
+                </button>
             </div>
             
-            <div class="sessoes-lista">
-                <div class="sessao-item atual">
-                    <div class="sessao-info">
-                        <div class="sessao-device">
-                            <i class="fas fa-desktop"></i>
-                            <span>Windows - Chrome</span>
-                        </div>
-                        <div class="sessao-detalhes">
-                            <span>IP: 192.168.1.100</span>
-                            <span>Atual</span>
-                        </div>
-                    </div>
-                    <span class="sessao-badge atual">Sessão Atual</span>
-                </div>
-                
-                <div class="sessao-item">
-                    <div class="sessao-info">
-                        <div class="sessao-device">
-                            <i class="fas fa-mobile-alt"></i>
-                            <span>iPhone - Safari</span>
-                        </div>
-                        <div class="sessao-detalhes">
-                            <span>IP: 192.168.1.101</span>
-                            <span>Há 2 horas</span>
-                        </div>
-                    </div>
-                    <button class="btn-fisio btn-secundario btn-pequeno" onclick="revogarSessao(2)">
-                        Revogar
-                    </button>
-                </div>
+            <div id="sessoes-loading" class="loading-container" style="display: none;">
+                <div class="spinner"></div>
+                <span>Carregando sessões...</span>
             </div>
             
-            <button class="btn-fisio btn-secundario btn-pequeno" onclick="revogarTodasSessoes()">
-                <i class="fas fa-sign-out-alt"></i>
-                Revogar Todas as Sessões
-            </button>
+            <div class="sessoes-lista" id="sessoesLista">
+                <!-- Sessões serão carregadas dinamicamente -->
+            </div>
+            
+            <div class="sessoes-actions">
+                <button class="btn-fisio btn-secundario btn-pequeno" onclick="revogarTodasSessoes()" id="btnRevogarTodas">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Revogar Todas as Outras Sessões
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -526,9 +509,14 @@
                 <div class="form-grupo">
                     <label for="fusoHorario">Fuso Horário</label>
                     <select id="fusoHorario" name="fuso_horario">
-                        <option value="America/Sao_Paulo" selected>Brasília (UTC-3)</option>
-                        <option value="America/Manaus">Manaus (UTC-4)</option>
-                        <option value="America/Rio_Branco">Rio Branco (UTC-5)</option>
+                        <option value="America/Sao_Paulo" selected>Brasília, São Paulo (UTC-3)</option>
+                        <option value="America/Manaus">Manaus, Cuiabá (UTC-4)</option>
+                        <option value="America/Rio_Branco">Rio Branco, Acre (UTC-5)</option>
+                        <option value="America/Noronha">Fernando de Noronha (UTC-2)</option>
+                        <option value="America/Fortaleza">Fortaleza (UTC-3)</option>
+                        <option value="America/Recife">Recife (UTC-3)</option>
+                        <option value="America/Salvador">Salvador (UTC-3)</option>
+                        <option value="America/Belem">Belém (UTC-3)</option>
                     </select>
                 </div>
                 
@@ -1677,6 +1665,351 @@
         text-align: center;
     }
 }
+
+/* Estilos para Sessões Ativas */
+.loading-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 40px;
+    color: var(--cinza-escuro);
+}
+
+.spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--cinza-medio);
+    border-top: 2px solid var(--azul-saude);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.sessoes-actions {
+    padding-top: 16px;
+    border-top: 1px solid var(--cinza-medio);
+    margin-top: 16px;
+}
+
+.sessao-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    background: var(--cinza-claro);
+    border-radius: 12px;
+    margin-bottom: 12px;
+    border: 1px solid var(--cinza-medio);
+    transition: var(--transicao);
+}
+
+.sessao-item:hover {
+    background: #f1f5f9;
+    transform: translateY(-1px);
+}
+
+.sessao-item.atual {
+    background: rgba(30, 58, 138, 0.05);
+    border-color: var(--azul-saude);
+}
+
+.sessao-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+}
+
+.sessao-device {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 600;
+    color: var(--cinza-escuro);
+}
+
+.sessao-device i {
+    width: 20px;
+    color: var(--azul-saude);
+}
+
+.sessao-detalhes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    font-size: 0.85rem;
+    color: #6b7280;
+}
+
+.sessao-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    padding: 4px 8px;
+    border-radius: 12px;
+}
+
+.sessao-status.online {
+    background: rgba(16, 185, 129, 0.1);
+    color: #059669;
+}
+
+.sessao-status.recent {
+    background: rgba(245, 158, 11, 0.1);
+    color: #d97706;
+}
+
+.sessao-status.offline {
+    background: rgba(107, 114, 128, 0.1);
+    color: #6b7280;
+}
+
+.sessao-status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.sessao-badge {
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.sessao-badge.atual {
+    background: var(--azul-saude);
+    color: white;
+}
+
+.sessao-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.btn-revogar {
+    padding: 8px 16px;
+    background: transparent;
+    color: var(--erro);
+    border: 1px solid var(--erro);
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transicao);
+}
+
+.btn-revogar:hover {
+    background: var(--erro);
+    color: white;
+}
+
+.sessao-empty {
+    text-align: center;
+    padding: 40px;
+    color: var(--cinza-escuro);
+}
+
+.sessao-empty i {
+    font-size: 3rem;
+    color: var(--cinza-medio);
+    margin-bottom: 16px;
+}
+
+/* Responsividade para sessões */
+@media (max-width: 768px) {
+    .sessao-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .sessao-actions {
+        align-self: stretch;
+        justify-content: flex-end;
+    }
+    
+    .sessao-detalhes {
+        flex-direction: column;
+        gap: 4px;
+    }
+}
+
+/* =================== ESTILOS PARA TEMAS =================== */
+
+/* Tema Escuro */
+body.tema-escuro {
+    --fundo: #1a1a1a;
+    --fundo-secundario: #2d2d2d;
+    --fundo-terciario: #3a3a3a;
+    --texto: #ffffff;
+    --texto-secundario: #b3b3b3;
+    --border: #404040;
+    --cinza-claro: #4a4a4a;
+    --cinza-medio: #666666;
+    --cinza-escuro: #999999;
+    --sombra: rgba(0, 0, 0, 0.5);
+}
+
+body.tema-escuro .card-fisio {
+    background: var(--fundo-secundario);
+    border-color: var(--border);
+}
+
+body.tema-escuro .fisio-input,
+body.tema-escuro .fisio-select {
+    background: var(--fundo-terciario);
+    border-color: var(--border);
+    color: var(--texto);
+}
+
+body.tema-escuro .fisio-input:focus,
+body.tema-escuro .fisio-select:focus {
+    border-color: var(--primario);
+    background: var(--fundo);
+}
+
+/* Interface Compacta */
+body.interface-compacta .card-fisio {
+    padding: 12px !important;
+}
+
+body.interface-compacta .form-grupo {
+    margin-bottom: 12px !important;
+}
+
+body.interface-compacta .btn-fisio {
+    padding: 6px 12px !important;
+    font-size: 0.85rem !important;
+}
+
+body.interface-compacta .card-header-fisio {
+    margin-bottom: 12px !important;
+}
+
+body.interface-compacta .aba-conteudo {
+    padding: 16px !important;
+}
+
+body.interface-compacta .preferencias-grid {
+    gap: 16px !important;
+}
+
+body.interface-compacta .fisio-input,
+body.interface-compacta .fisio-select {
+    padding: 8px 12px !important;
+    font-size: 0.9rem !important;
+}
+
+/* Animações Reduzidas */
+body.animacoes-reduzidas * {
+    transition: none !important;
+    animation: none !important;
+}
+
+body.animacoes-reduzidas .spinner {
+    animation: spin 1s linear infinite;
+}
+
+/* Alertas do Sistema */
+.alerta {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 16px 20px;
+    border-radius: 8px;
+    color: white;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 10000;
+    max-width: 400px;
+    animation: slideInRight 0.3s ease-out;
+}
+
+.alerta-sucesso {
+    background: #28a745;
+}
+
+.alerta-erro {
+    background: #dc3545;
+}
+
+.alerta i {
+    font-size: 1.2rem;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Estilos específicos para tema preview */
+.tema-preview {
+    width: 40px;
+    height: 30px;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    border: 2px solid transparent;
+    position: relative;
+    overflow: hidden;
+}
+
+.tema-preview.claro {
+    background: linear-gradient(135deg, #ffffff 50%, #f8f9fa 50%);
+    border-color: #dee2e6;
+}
+
+.tema-preview.escuro {
+    background: linear-gradient(135deg, #2d2d2d 50%, #1a1a1a 50%);
+    border-color: #404040;
+}
+
+.tema-preview.auto {
+    background: linear-gradient(90deg, #ffffff 50%, #2d2d2d 50%);
+    border-color: #6c757d;
+}
+
+.tema-opcao.ativa .tema-preview {
+    border-color: var(--primario);
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.tema-opcao {
+    cursor: pointer;
+    text-align: center;
+    padding: 8px;
+    border-radius: 8px;
+    transition: var(--transicao);
+}
+
+.tema-opcao:hover {
+    background: var(--fundo-terciario);
+}
+
+.tema-opcao.ativa {
+    background: var(--primario-claro);
+}
+
 </style>
 
 <script>
@@ -1689,6 +2022,11 @@ function trocarAbaPerfil(aba) {
     // Adicionar classe ativa na aba selecionada
     document.getElementById('aba' + aba.charAt(0).toUpperCase() + aba.slice(1)).classList.add('ativa');
     document.getElementById('conteudo' + aba.charAt(0).toUpperCase() + aba.slice(1)).classList.add('ativa');
+    
+    // Carregar sessões quando abrir aba de segurança
+    if (aba === 'seguranca') {
+        carregarSessoes();
+    }
 }
 
 // Sistema de Edição/Salvamento
@@ -1963,25 +2301,176 @@ function togglePasswordVisibility(inputId) {
 }
 
 function ativar2FA() {
-    mostrarAlerta('Modal de ativação 2FA será implementado', 'info');
+    mostrarModal2FA();
 }
 
 function desativar2FA() {
-    if (confirm('Tem certeza que deseja desativar o 2FA?')) {
-        mostrarAlerta('2FA desativado', 'sucesso');
+    if (confirm('Tem certeza que deseja desativar a autenticação de dois fatores?\n\nSua conta ficará menos segura.')) {
+        fetch('<?= BASE_URL ?>/profile/disable2FA', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRF-Token': '<?= $_SESSION['csrf_token'] ?? '' ?>'
+            },
+            body: 'csrf_token=<?= $_SESSION['csrf_token'] ?? '' ?>'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mostrarAlerta('2FA desativado com sucesso!', 'sucesso');
+                // Recarregar a página para atualizar o status
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                mostrarAlerta(data.message || 'Erro ao desativar 2FA', 'erro');
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            mostrarAlerta('Erro ao desativar 2FA. Tente novamente.', 'erro');
+        });
     }
 }
 
-function revogarSessao(id) {
-    if (confirm('Deseja revogar esta sessão?')) {
-        mostrarAlerta('Sessão revogada', 'sucesso');
+// ================ GESTÃO DE SESSÕES ================
+
+function carregarSessoes() {
+    const loading = document.getElementById('sessoes-loading');
+    const lista = document.getElementById('sessoesLista');
+    
+    loading.style.display = 'flex';
+    lista.innerHTML = '';
+    
+    const profilePath = window.location.pathname.includes('/admin/') ? '/admin/profile' : '/profile';
+    fetch('<?= BASE_URL ?>' + profilePath + '/getSessions', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        loading.style.display = 'none';
+        
+        if (data.success) {
+            renderizarSessoes(data.sessions);
+        } else {
+            lista.innerHTML = '<div class="sessao-empty"><i class="fas fa-exclamation-triangle"></i><p>Erro ao carregar sessões</p></div>';
+        }
+    })
+    .catch(error => {
+        console.error('Erro ao carregar sessões:', error);
+        loading.style.display = 'none';
+        lista.innerHTML = '<div class="sessao-empty"><i class="fas fa-wifi"></i><p>Erro de conexão</p></div>';
+    });
+}
+
+function renderizarSessoes(sessions) {
+    const lista = document.getElementById('sessoesLista');
+    
+    if (sessions.length === 0) {
+        lista.innerHTML = '<div class="sessao-empty"><i class="fas fa-laptop"></i><p>Nenhuma sessão ativa encontrada</p></div>';
+        return;
     }
+    
+    lista.innerHTML = sessions.map(session => {
+        const statusText = session.status === 'online' ? 'Online' : 
+                          session.status === 'recent' ? 'Recente' : 'Offline';
+        
+        return `
+            <div class="sessao-item ${session.is_current ? 'atual' : ''}">
+                <div class="sessao-info">
+                    <div class="sessao-device">
+                        <i class="${session.device_icon}"></i>
+                        <span>${session.os_name} - ${session.browser_name}</span>
+                    </div>
+                    <div class="sessao-detalhes">
+                        <span>IP: ${session.ip_address}</span>
+                        <span>${session.location}</span>
+                        <span data-format-date="${session.created_at}" data-include-time="true">Criado: ${session.formatted_created}</span>
+                        <span>Atividade: ${session.formatted_activity}</span>
+                        <div class="sessao-status ${session.status_class}">
+                            <div class="sessao-status-dot"></div>
+                            ${statusText}
+                        </div>
+                    </div>
+                </div>
+                
+                ${session.is_current ? 
+                    '<div class="sessao-badge atual">Sessão Atual</div>' :
+                    `<div class="sessao-actions">
+                        <button class="btn-revogar" onclick="revogarSessao('${session.id}')">
+                            Revogar
+                        </button>
+                    </div>`
+                }
+            </div>
+        `;
+    }).join('');
+    
+    // Aplicar formatação de data/hora nas sessões renderizadas
+    if (window.formatoDataHora) {
+        window.formatoDataHora.aplicarFormatos();
+    }
+}
+
+function revogarSessao(sessionId) {
+    if (!confirm('Deseja revogar esta sessão? O usuário será desconectado imediatamente.')) {
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('session_id', sessionId);
+    formData.append('csrf_token', '<?= $_SESSION["csrf_token"] ?? "" ?>');
+    
+    const profilePath = window.location.pathname.includes('/admin/') ? '/admin/profile' : '/profile';
+    fetch('<?= BASE_URL ?>' + profilePath + '/revokeSession', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarAlerta(data.message, 'sucesso');
+            carregarSessoes(); // Recarregar lista
+        } else {
+            mostrarAlerta(data.message, 'erro');
+        }
+    })
+    .catch(error => {
+        mostrarAlerta('Erro de conexão. Tente novamente.', 'erro');
+    });
 }
 
 function revogarTodasSessoes() {
-    if (confirm('Deseja revogar todas as outras sessões?')) {
-        mostrarAlerta('Todas as sessões foram revogadas', 'sucesso');
+    if (!confirm('Deseja revogar todas as outras sessões? Todos os outros dispositivos serão desconectados.')) {
+        return;
     }
+    
+    const formData = new FormData();
+    formData.append('csrf_token', '<?= $_SESSION["csrf_token"] ?? "" ?>');
+    
+    const profilePath = window.location.pathname.includes('/admin/') ? '/admin/profile' : '/profile';
+    fetch('<?= BASE_URL ?>' + profilePath + '/revokeAllSessions', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarAlerta(data.message, 'sucesso');
+            carregarSessoes(); // Recarregar lista
+        } else {
+            mostrarAlerta(data.message, 'erro');
+        }
+    })
+    .catch(error => {
+        mostrarAlerta('Erro de conexão. Tente novamente.', 'erro');
+    });
 }
 
 // Preferências
@@ -2305,4 +2794,788 @@ document.getElementById('telefone').addEventListener('input', function(e) {
     }
     e.target.value = value;
 });
+
+// ================ MODAL 2FA ================
+
+function mostrarModal2FA() {
+    // Criar overlay simples
+    const overlay = document.createElement('div');
+    overlay.id = 'modal2fa';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        padding: 20px;
+        box-sizing: border-box;
+    `;
+    
+    // Criar conteúdo do modal
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        background: white;
+        border-radius: 12px;
+        width: 100%;
+        max-width: 500px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    `;
+    
+    modal.innerHTML = `
+        <div style="padding: 20px; border-bottom: 1px solid #eee; background: #1e3a8a; color: white; border-radius: 12px 12px 0 0;">
+            <h3 style="margin: 0; display: flex; align-items: center; justify-content: space-between;">
+                🔐 Ativar 2FA
+                <button onclick="fecharModal2FA()" style="background: none; border: none; color: white; font-size: 24px; cursor: pointer; padding: 0; width: 30px; height: 30px;">&times;</button>
+            </h3>
+        </div>
+        <div style="padding: 30px; text-align: center;">
+            <h4>Configurar Autenticação de Dois Fatores</h4>
+            <p>Este processo irá configurar a autenticação de dois fatores para sua conta.</p>
+            <div style="margin: 20px 0;">
+                <p><strong>Você precisará de:</strong></p>
+                <ul style="text-align: left; display: inline-block;">
+                    <li>Google Authenticator, Authy ou app similar</li>
+                    <li>Acesso ao seu smartphone</li>
+                </ul>
+            </div>
+            <div style="margin-top: 30px;">
+                <button onclick="iniciarConfiguração2FA()" style="background: #1e3a8a; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; margin-right: 10px;">Continuar</button>
+                <button onclick="fecharModal2FA()" style="background: #6b7280; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer;">Cancelar</button>
+            </div>
+        </div>
+    `;
+    
+    // Fechar ao clicar no overlay
+    overlay.onclick = function(e) {
+        if (e.target === overlay) {
+            fecharModal2FA();
+        }
+    };
+    
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    document.body.style.overflow = 'hidden';
+}
+
+// ================ FUNÇÕES DO MODAL 2FA ================
+
+function fecharModal2FA() {
+    const modal = document.getElementById('modal2fa');
+    if (modal) {
+        modal.remove();
+    }
+    document.body.style.overflow = '';
+}
+
+function iniciarConfiguração2FA() {
+    // Atualizar modal para mostrar QR Code
+    const modal = document.querySelector('#modal2fa div:last-child');
+    modal.innerHTML = `
+        <div style="padding: 30px;">
+            <h4>Escaneie o QR Code</h4>
+            <p>Use seu app autenticador para escanear o código:</p>
+            
+            <div style="text-align: center; margin: 20px 0;">
+                <div id="qrLoading" style="padding: 40px;">
+                    <div style="border: 4px solid #f3f3f3; border-top: 4px solid #1e3a8a; border-radius: 50%; width: 40px; height: 40px; animation: spin 2s linear infinite; margin: 0 auto;"></div>
+                    <p style="margin-top: 15px;">Gerando QR Code...</p>
+                </div>
+                <div id="qrContent" style="display: none;">
+                    <img id="qrImage" src="" alt="QR Code" style="max-width: 200px; border: 1px solid #ddd; padding: 10px;" />
+                    <div style="margin-top: 15px;">
+                        <p><strong>Ou digite manualmente:</strong></p>
+                        <div style="background: #f5f5f5; padding: 10px; border-radius: 5px; font-family: monospace; word-break: break-all; margin: 10px 0;">
+                            <span id="manualSecret"></span>
+                            <button onclick="copiarSegredo()" style="margin-left: 10px; padding: 5px 10px; border: none; background: #1e3a8a; color: white; border-radius: 3px; cursor: pointer;">📋</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="verificacaoStep" style="display: none; margin-top: 20px;">
+                <h5>Confirme o código:</h5>
+                <input type="text" id="codigoVerificacao" placeholder="000000" maxlength="6" style="width: 120px; padding: 10px; text-align: center; font-size: 18px; border: 2px solid #ddd; border-radius: 5px; margin: 10px;" />
+                <div style="margin-top: 15px;">
+                    <button onclick="confirmar2FA()" id="btnConfirmar" style="background: #1e3a8a; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; margin-right: 10px;">Ativar 2FA</button>
+                    <button onclick="voltarParaQR()" style="background: #6b7280; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer;">Voltar</button>
+                </div>
+            </div>
+            
+            <div style="margin-top: 30px;">
+                <button onclick="mostrarVerificacao()" id="btnContinuar" style="background: #1e3a8a; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; margin-right: 10px;">Continuar</button>
+                <button onclick="fecharModal2FA()" style="background: #6b7280; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer;">Cancelar</button>
+            </div>
+        </div>
+        
+        <style>
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        </style>
+    `;
+    
+    // Gerar QR Code
+    gerarQRCode();
+}
+
+function handleEscKey(e) {
+    if (e.key === 'Escape') {
+        fecharModal2FA();
+    }
+}
+
+function mostrarVerificacao() {
+    document.getElementById('verificacaoStep').style.display = 'block';
+    document.getElementById('btnContinuar').style.display = 'none';
+}
+
+function voltarParaQR() {
+    document.getElementById('verificacaoStep').style.display = 'none';
+    document.getElementById('btnContinuar').style.display = 'inline-block';
+}
+
+let currentSecret = '';
+let currentBackupCodes = [];
+
+function gerarQRCode() {
+    const qrLoading = document.getElementById('qrLoading');
+    const qrContent = document.getElementById('qrContent');
+    
+    qrLoading.style.display = 'block';
+    qrContent.style.display = 'none';
+    
+    fetch('<?= BASE_URL ?>/profile/enable2FA', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        }
+    })
+    .then(response => {
+        console.log('Response status:', response.status);
+        return response.text();
+    })
+    .then(text => {
+        console.log('Response text:', text);
+        try {
+            const data = JSON.parse(text);
+            if (data.success) {
+                currentSecret = data.secret;
+                
+                document.getElementById('qrImage').src = data.qrCodeURL;
+                document.getElementById('manualSecret').textContent = data.secret;
+                
+                qrLoading.style.display = 'none';
+                qrContent.style.display = 'block';
+            } else {
+                alert('Erro: ' + (data.message || 'Erro desconhecido'));
+                fecharModal2FA();
+            }
+        } catch (e) {
+            console.error('Error parsing JSON:', e);
+            alert('Erro de resposta do servidor: ' + text);
+            fecharModal2FA();
+        }
+    })
+    .catch(error => {
+        console.error('Fetch error:', error);
+        alert('Erro de rede: ' + error.message);
+        fecharModal2FA();
+    });
+}
+
+function copiarSegredo() {
+    const secret = document.getElementById('manualSecret').textContent;
+    navigator.clipboard.writeText(secret).then(() => {
+        const btn = event.target;
+        const originalText = btn.textContent;
+        btn.textContent = '✓';
+        setTimeout(() => {
+            btn.textContent = originalText;
+        }, 2000);
+    });
+}
+
+function confirmar2FA() {
+    const codigo = document.getElementById('codigoVerificacao').value.trim();
+    const btnConfirmar = document.getElementById('btnConfirmar');
+    
+    if (!codigo || codigo.length !== 6 || !/^\d{6}$/.test(codigo)) {
+        alert('Digite um código de 6 dígitos válido');
+        return;
+    }
+    
+    btnConfirmar.disabled = true;
+    btnConfirmar.innerHTML = '<div class="spinner"></div> Verificando...';
+    
+    fetch('<?= BASE_URL ?>/profile/confirm2FA', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            'code': codigo,
+            'csrf_token': '<?= $_SESSION["csrf_token"] ?? "" ?>'
+        })
+    })
+    .then(response => {
+        console.log('Confirm response status:', response.status);
+        return response.text();
+    })
+    .then(text => {
+        console.log('Confirm response text:', text);
+        try {
+            const data = JSON.parse(text);
+            if (data.success) {
+                alert('2FA ativado com sucesso! Códigos de backup: ' + data.backupCodes.join(', '));
+                fecharModal2FA();
+                // Recarregar página para atualizar status
+                setTimeout(() => {
+                    location.reload();
+                }, 2000);
+            } else {
+                alert('Erro na verificação: ' + (data.message || 'Código incorreto'));
+            }
+        } catch (e) {
+            console.error('Error parsing confirm JSON:', e);
+            alert('Erro de resposta na verificação: ' + text);
+        }
+    })
+    .catch(error => {
+        console.error('Confirm fetch error:', error);
+        alert('Erro de rede na verificação: ' + error.message);
+    })
+    .finally(() => {
+        btnConfirmar.disabled = false;
+        btnConfirmar.innerHTML = 'Ativar 2FA';
+    });
+}
+
+function mostrarBackupCodes() {
+    const grid = document.getElementById('backupCodesGrid');
+    grid.innerHTML = currentBackupCodes.map(code => 
+        `<div class="backup-code-item">${code}</div>`
+    ).join('');
+}
+
+function copiarBackupCodes() {
+    const text = currentBackupCodes.join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+        mostrarAlerta('Códigos copiados para a área de transferência!', 'sucesso');
+    });
+}
+
+function finalizarModal2FA() {
+    fecharModal2FA();
+    mostrarAlerta('2FA ativado com sucesso! Sua conta agora está mais segura.', 'sucesso');
+    
+    // Recarregar página para atualizar status
+    setTimeout(() => {
+        location.reload();
+    }, 2000);
+}
+
+// Formatação automática do código de verificação
+document.addEventListener('click', function(e) {
+    if (e.target.id === 'codigoVerificacao') {
+        e.target.addEventListener('input', function(event) {
+            event.target.value = event.target.value.replace(/\D/g, '');
+        });
+    }
+});
+
+function baixarBackupCodes() {
+    const text = `CÓDIGOS DE BACKUP - MEGAFISIO IA
+Gerados em: ${new Date().toLocaleString('pt-BR')}
+
+${currentBackupCodes.join('\n')}
+
+IMPORTANTE:
+- Guarde estes códigos em local seguro
+- Cada código só pode ser usado uma vez
+- Use-os se perder acesso ao seu app autenticador`;
+    
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `backup-codes-megafisio-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function copiarBackupCodes() {
+    const text = currentBackupCodes.join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+        mostrarAlerta('Códigos copiados para a área de transferência!', 'sucesso');
+    });
+}
+
+function finalizarModal2FA() {
+    fecharModal2FA();
+    mostrarAlerta('2FA ativado com sucesso! Sua conta agora está mais segura.', 'sucesso');
+    
+    // Recarregar página para atualizar status
+    setTimeout(() => {
+        location.reload();
+    }, 2000);
+}
+
+// Formatação automática do código de verificação
+document.addEventListener('click', function(e) {
+    if (e.target.id === 'codigoVerificacao') {
+        e.target.addEventListener('input', function(event) {
+            event.target.value = event.target.value.replace(/\D/g, '');
+        });
+    }
+});
+
+// =================== SISTEMA DE PREFERÊNCIAS ===================
+
+// Variáveis globais para preferências
+let preferencasOriginais = {};
+let temaAtual = '<?= $userProfile['theme'] ?? 'claro' ?>';
+let idiomaAtual = '<?= $userProfile['language'] ?? 'pt-BR' ?>';
+
+// Sistema de traduções simples
+const traducoes = {
+    'pt-BR': {
+        'Notificações': 'Notificações',
+        'Notificações por email': 'Notificações por email',
+        'Notificações do sistema': 'Notificações do sistema',
+        'Atualizações de IA': 'Atualizações de IA',
+        'Newsletter mensal': 'Newsletter mensal',
+        'Idioma e Região': 'Idioma e Região',
+        'Idioma': 'Idioma',
+        'Fuso Horário': 'Fuso Horário',
+        'Formato de Data': 'Formato de Data',
+        'Tema e Aparência': 'Tema e Aparência',
+        'Claro': 'Claro',
+        'Escuro': 'Escuro',
+        'Automático': 'Automático',
+        'Interface compacta': 'Interface compacta',
+        'Animações reduzidas': 'Animações reduzidas',
+        'Salvar Preferências': 'Salvar Preferências',
+        'Preferências salvas com sucesso!': 'Preferências salvas com sucesso!'
+    },
+    'en-US': {
+        'Notificações': 'Notifications',
+        'Notificações por email': 'Email notifications',
+        'Notificações do sistema': 'System notifications',
+        'Atualizações de IA': 'AI updates',
+        'Newsletter mensal': 'Monthly newsletter',
+        'Idioma e Região': 'Language & Region',
+        'Idioma': 'Language',
+        'Fuso Horário': 'Time Zone',
+        'Formato de Data': 'Date Format',
+        'Tema e Aparência': 'Theme & Appearance',
+        'Claro': 'Light',
+        'Escuro': 'Dark',
+        'Automático': 'Auto',
+        'Interface compacta': 'Compact interface',
+        'Animações reduzidas': 'Reduced animations',
+        'Salvar Preferências': 'Save Preferences',
+        'Preferências salvas com sucesso!': 'Preferences saved successfully!'
+    },
+    'es-ES': {
+        'Notificações': 'Notificaciones',
+        'Notificações por email': 'Notificaciones por email',
+        'Notificações do sistema': 'Notificaciones del sistema',
+        'Atualizações de IA': 'Actualizaciones de IA',
+        'Newsletter mensal': 'Newsletter mensual',
+        'Idioma e Região': 'Idioma y Región',
+        'Idioma': 'Idioma',
+        'Fuso Horário': 'Zona Horaria',
+        'Formato de Data': 'Formato de Fecha',
+        'Tema e Aparência': 'Tema y Apariencia',
+        'Claro': 'Claro',
+        'Escuro': 'Oscuro',
+        'Automático': 'Automático',
+        'Interface compacta': 'Interfaz compacta',
+        'Animações reduzidas': 'Animaciones reducidas',
+        'Salvar Preferências': 'Guardar Preferencias',
+        'Preferências salvas com sucesso!': '¡Preferencias guardadas exitosamente!'
+    }
+};
+
+// Inicializar preferências ao carregar a página
+document.addEventListener('DOMContentLoaded', function() {
+    carregarPreferenciasUsuario();
+    
+    // Adicionar listener para mudança de idioma em tempo real
+    const selectIdioma = document.getElementById('idioma');
+    if (selectIdioma) {
+        selectIdioma.addEventListener('change', function() {
+            aplicarIdioma(this.value);
+        });
+    }
+    
+    // Adicionar listeners para formato de data e fuso horário
+    const selectFormato = document.getElementById('formatoData');
+    if (selectFormato) {
+        selectFormato.addEventListener('change', function() {
+            aplicarFormatoData(this.value);
+        });
+    }
+    
+    const selectFuso = document.getElementById('fusoHorario');
+    if (selectFuso) {
+        selectFuso.addEventListener('change', function() {
+            aplicarFusoHorario(this.value);
+        });
+    }
+});
+
+function carregarPreferenciasUsuario() {
+    // Carregar dados das preferências do usuário logado
+    const preferenciasUsuario = {
+        email_notifications: <?= json_encode((bool)($userProfile['email_notifications'] ?? true)) ?>,
+        system_notifications: <?= json_encode((bool)($userProfile['system_notifications'] ?? true)) ?>,
+        ai_updates: <?= json_encode((bool)($userProfile['ai_updates'] ?? false)) ?>,
+        newsletter: <?= json_encode((bool)($userProfile['newsletter'] ?? false)) ?>,
+        language: '<?= $userProfile['language'] ?? 'pt-BR' ?>',
+        timezone: '<?= $userProfile['timezone'] ?? 'America/Sao_Paulo' ?>',
+        date_format: '<?= $userProfile['date_format'] ?? 'dd/mm/yyyy' ?>',
+        theme: '<?= $userProfile['theme'] ?? 'claro' ?>',
+        compact_interface: <?= json_encode((bool)($userProfile['compact_interface'] ?? false)) ?>,
+        reduced_animations: <?= json_encode((bool)($userProfile['reduced_animations'] ?? false)) ?>
+    };
+    
+    // Aplicar valores nos elementos da interface
+    aplicarPreferenciasInterface(preferenciasUsuario);
+    
+    // Salvar como valores originais
+    preferencasOriginais = {...preferenciasUsuario};
+    
+    // Aplicar tema atual
+    aplicarTema(preferenciasUsuario.theme);
+    
+    // Aplicar configurações de interface
+    aplicarConfiguracaoInterface(preferenciasUsuario);
+    
+    // Aplicar idioma se diferente do padrão
+    if (preferenciasUsuario.language !== 'pt-BR') {
+        aplicarIdioma(preferenciasUsuario.language);
+    }
+}
+
+function aplicarPreferenciasInterface(prefs) {
+    // Notificações
+    document.querySelector('.notif-item:nth-child(1) input[type="checkbox"]').checked = prefs.email_notifications;
+    document.querySelector('.notif-item:nth-child(2) input[type="checkbox"]').checked = prefs.system_notifications;
+    document.querySelector('.notif-item:nth-child(3) input[type="checkbox"]').checked = prefs.ai_updates;
+    document.querySelector('.notif-item:nth-child(4) input[type="checkbox"]').checked = prefs.newsletter;
+    
+    // Idioma e região
+    document.getElementById('idioma').value = prefs.language;
+    document.getElementById('fusoHorario').value = prefs.timezone;
+    document.getElementById('formatoData').value = prefs.date_format;
+    
+    // Tema e aparência
+    document.querySelectorAll('.tema-opcao').forEach(opcao => opcao.classList.remove('ativa'));
+    document.querySelector(`.tema-opcao[onclick*="${prefs.theme}"]`).classList.add('ativa');
+    
+    document.querySelector('.config-item:nth-child(1) input[type="checkbox"]').checked = prefs.compact_interface;
+    document.querySelector('.config-item:nth-child(2) input[type="checkbox"]').checked = prefs.reduced_animations;
+}
+
+function selecionarTemaUsuario(tema) {
+    // Remover classe ativa de todas as opções
+    document.querySelectorAll('.tema-opcao').forEach(opcao => opcao.classList.remove('ativa'));
+    
+    // Adicionar classe ativa na opção selecionada
+    const opcaoSelecionada = document.querySelector(`.tema-opcao[onclick*="${tema}"]`);
+    if (opcaoSelecionada) {
+        opcaoSelecionada.classList.add('ativa');
+    }
+    
+    // Atualizar tema atual
+    temaAtual = tema;
+    
+    // Aplicar tema imediatamente para preview
+    aplicarTema(tema);
+}
+
+function aplicarTema(tema) {
+    const body = document.body;
+    
+    // Remover classes de tema existentes
+    body.classList.remove('tema-claro', 'tema-escuro', 'tema-auto');
+    
+    // Aplicar novo tema
+    switch(tema) {
+        case 'escuro':
+            body.classList.add('tema-escuro');
+            break;
+        case 'auto':
+            // Detectar preferência do sistema
+            const temaSistema = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'escuro' : 'claro';
+            body.classList.add(`tema-${temaSistema}`);
+            break;
+        default:
+            body.classList.add('tema-claro');
+    }
+}
+
+function salvarPreferencias() {
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner"></div> Salvando...';
+    
+    // Coletar dados das preferências
+    const preferencias = {
+        // Notificações
+        email_notifications: document.querySelector('.notif-item:nth-child(1) input[type="checkbox"]').checked,
+        system_notifications: document.querySelector('.notif-item:nth-child(2) input[type="checkbox"]').checked,
+        ai_updates: document.querySelector('.notif-item:nth-child(3) input[type="checkbox"]').checked,
+        newsletter: document.querySelector('.notif-item:nth-child(4) input[type="checkbox"]').checked,
+        
+        // Idioma e região
+        language: document.getElementById('idioma').value,
+        timezone: document.getElementById('fusoHorario').value,
+        date_format: document.getElementById('formatoData').value,
+        
+        // Tema e aparência
+        theme: temaAtual,
+        compact_interface: document.querySelector('.config-item:nth-child(1) input[type="checkbox"]').checked,
+        reduced_animations: document.querySelector('.config-item:nth-child(2) input[type="checkbox"]').checked
+    };
+    
+    // Enviar para o servidor
+    fetch('<?= BASE_URL ?>/profile/save-preferences', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            ...preferencias,
+            'csrf_token': '<?= $_SESSION["csrf_token"] ?? "" ?>'
+        })
+    })
+    .then(response => response.text())
+    .then(text => {
+        try {
+            const data = JSON.parse(text);
+            if (data.success) {
+                // Atualizar valores originais
+                preferencasOriginais = {...preferencias};
+                
+                // Aplicar tema e configurações de interface
+                aplicarTema(preferencias.theme);
+                aplicarConfiguracaoInterface(preferencias);
+                
+                // Aplicar idioma se mudou
+                if (preferencias.language !== idiomaAtual) {
+                    aplicarIdioma(preferencias.language);
+                }
+                
+                // Mostrar mensagem de sucesso no idioma correto
+                const traducao = traducoes[preferencias.language] || traducoes['pt-BR'];
+                mostrarAlerta(traducao['Preferências salvas com sucesso!'], 'sucesso');
+                
+            } else {
+                mostrarAlerta('Erro ao salvar preferências: ' + (data.message || 'Erro desconhecido'), 'erro');
+            }
+        } catch (e) {
+            console.error('Error parsing JSON:', e);
+            mostrarAlerta('Erro de resposta do servidor', 'erro');
+        }
+    })
+    .catch(error => {
+        console.error('Fetch error:', error);
+        mostrarAlerta('Erro de rede: ' + error.message, 'erro');
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    });
+}
+
+function aplicarConfiguracaoInterface(prefs) {
+    const body = document.body;
+    
+    // Interface compacta
+    if (prefs.compact_interface) {
+        body.classList.add('interface-compacta');
+    } else {
+        body.classList.remove('interface-compacta');
+    }
+    
+    // Animações reduzidas
+    if (prefs.reduced_animations) {
+        body.classList.add('animacoes-reduzidas');
+    } else {
+        body.classList.remove('animacoes-reduzidas');
+    }
+}
+
+function aplicarIdioma(idioma) {
+    try {
+        const traducao = traducoes[idioma];
+        if (!traducao) return;
+        
+        idiomaAtual = idioma;
+        
+        // Traduzir elementos específicos da aba Preferências
+        const elementos = {
+            '.card-titulo span': [
+                'Notificações',
+                'Idioma e Região', 
+                'Tema e Aparência'
+            ],
+            '.notif-item span': [
+                'Notificações por email',
+                'Notificações do sistema',
+                'Atualizações de IA',
+                'Newsletter mensal'
+            ],
+            'label[for="idioma"]': 'Idioma',
+            'label[for="fusoHorario"]': 'Fuso Horário',
+            'label[for="formatoData"]': 'Formato de Data',
+            '.tema-opcao span': ['Claro', 'Escuro', 'Automático'],
+            '.config-item span': ['Interface compacta', 'Animações reduzidas'],
+            'button[onclick="salvarPreferencias()"]': 'Salvar Preferências'
+        };
+        
+        // Aplicar traduções
+        Object.keys(elementos).forEach(seletor => {
+            const textos = elementos[seletor];
+            const elementosDOM = document.querySelectorAll(seletor);
+            
+            if (Array.isArray(textos)) {
+                elementosDOM.forEach((el, index) => {
+                    if (textos[index] && traducao[textos[index]]) {
+                        el.textContent = traducao[textos[index]];
+                    }
+                });
+            } else {
+                elementosDOM.forEach(el => {
+                    if (traducao[textos]) {
+                        el.textContent = traducao[textos];
+                    }
+                });
+            }
+        });
+        
+        console.log('Idioma aplicado:', idioma);
+    } catch (e) {
+        console.error('Erro ao aplicar idioma:', e);
+    }
+}
+
+function formatarDataComPreferencia(data, formato) {
+    try {
+        const dataObj = new Date(data);
+        if (isNaN(dataObj)) return data;
+        
+        const dia = String(dataObj.getDate()).padStart(2, '0');
+        const mes = String(dataObj.getMonth() + 1).padStart(2, '0');
+        const ano = dataObj.getFullYear();
+        
+        switch (formato) {
+            case 'mm/dd/yyyy':
+                return `${mes}/${dia}/${ano}`;
+            case 'yyyy-mm-dd':
+                return `${ano}-${mes}-${dia}`;
+            default: // dd/mm/yyyy
+                return `${dia}/${mes}/${ano}`;
+        }
+    } catch (e) {
+        return data;
+    }
+}
+
+function aplicarFormatoData(formato) {
+    try {
+        // Buscar todos os elementos de data na página e reformatar
+        const elementosData = document.querySelectorAll('[data-date]');
+        elementosData.forEach(el => {
+            const dataOriginal = el.getAttribute('data-date');
+            if (dataOriginal) {
+                el.textContent = formatarDataComPreferencia(dataOriginal, formato);
+            }
+        });
+        
+        console.log('Formato de data aplicado:', formato);
+    } catch (e) {
+        console.error('Erro ao aplicar formato de data:', e);
+    }
+}
+
+function aplicarFusoHorario(fusoHorario) {
+    try {
+        // Aplicar fuso horário aos elementos de data/hora
+        const elementosHora = document.querySelectorAll('[data-datetime]');
+        elementosHora.forEach(el => {
+            const dataHoraOriginal = el.getAttribute('data-datetime');
+            if (dataHoraOriginal) {
+                const dataObj = new Date(dataHoraOriginal);
+                const dataFormatada = dataObj.toLocaleString('pt-BR', {
+                    timeZone: fusoHorario,
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                el.textContent = dataFormatada;
+            }
+        });
+        
+        console.log('Fuso horário aplicado:', fusoHorario);
+    } catch (e) {
+        console.error('Erro ao aplicar fuso horário:', e);
+    }
+}
+
+function atualizarElementosDataHora() {
+    // Atualizar elementos de data/hora com as preferências atuais
+    const formatoAtual = document.getElementById('formatoData')?.value || 'dd/mm/yyyy';
+    const fusoAtual = document.getElementById('fusoHorario')?.value || 'America/Sao_Paulo';
+    
+    aplicarFormatoData(formatoAtual);
+    aplicarFusoHorario(fusoAtual);
+}
+
+// Detectar mudanças no tema do sistema para tema automático
+if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+        if (temaAtual === 'auto') {
+            aplicarTema('auto');
+        }
+    });
+}
+
+// Função auxiliar para mostrar alertas
+function mostrarAlerta(mensagem, tipo) {
+    // Criar elemento de alerta
+    const alerta = document.createElement('div');
+    alerta.className = `alerta alerta-${tipo}`;
+    alerta.innerHTML = `
+        <i class="fas fa-${tipo === 'sucesso' ? 'check-circle' : 'exclamation-circle'}"></i>
+        <span>${mensagem}</span>
+    `;
+    
+    // Adicionar ao DOM
+    document.body.appendChild(alerta);
+    
+    // Remover após 5 segundos
+    setTimeout(() => {
+        if (alerta.parentNode) {
+            alerta.parentNode.removeChild(alerta);
+        }
+    }, 5000);
+}
+
 </script>

@@ -10,6 +10,9 @@ class ProfileController extends BaseController {
     public function index() {
         $this->requireAuth();
         
+        // Log da visualização do perfil
+        $this->logUserAction($this->user['id'], 'profile_view', 'Visualizou próprio perfil');
+        
         // Garantir que a tabela user_profiles_extended existe
         require_once SRC_PATH . '/models/SmartMigrationManager.php';
         SmartMigrationManager::ensureTable('user_profiles_extended');
@@ -349,17 +352,21 @@ class ProfileController extends BaseController {
         }
         
         try {
+            // Garantir que a tabela user_profiles_extended existe
+            require_once SRC_PATH . '/models/SmartMigrationManager.php';
+            SmartMigrationManager::ensureTable('user_profiles_extended');
+            
             $data = [
-                'idioma' => $_POST['idioma'] ?? 'pt-BR',
-                'fuso_horario' => $_POST['fuso_horario'] ?? 'America/Sao_Paulo',
-                'formato_data' => $_POST['formato_data'] ?? 'dd/mm/yyyy',
-                'tema' => $_POST['tema'] ?? 'claro',
-                'interface_compacta' => isset($_POST['interface_compacta']) ? 1 : 0,
-                'animacoes_reduzidas' => isset($_POST['animacoes_reduzidas']) ? 1 : 0,
-                'email_notifications' => isset($_POST['email_notifications']) ? 1 : 0,
-                'system_notifications' => isset($_POST['system_notifications']) ? 1 : 0,
-                'ai_updates' => isset($_POST['ai_updates']) ? 1 : 0,
-                'newsletter' => isset($_POST['newsletter']) ? 1 : 0
+                'language' => $_POST['language'] ?? 'pt-BR',
+                'timezone' => $_POST['timezone'] ?? 'America/Sao_Paulo',
+                'date_format' => $_POST['date_format'] ?? 'dd/mm/yyyy',
+                'theme' => $_POST['theme'] ?? 'claro',
+                'compact_interface' => isset($_POST['compact_interface']) && $_POST['compact_interface'] === 'true' ? 1 : 0,
+                'reduced_animations' => isset($_POST['reduced_animations']) && $_POST['reduced_animations'] === 'true' ? 1 : 0,
+                'email_notifications' => isset($_POST['email_notifications']) && $_POST['email_notifications'] === 'true' ? 1 : 0,
+                'system_notifications' => isset($_POST['system_notifications']) && $_POST['system_notifications'] === 'true' ? 1 : 0,
+                'ai_updates' => isset($_POST['ai_updates']) && $_POST['ai_updates'] === 'true' ? 1 : 0,
+                'newsletter' => isset($_POST['newsletter']) && $_POST['newsletter'] === 'true' ? 1 : 0
             ];
             
             // Inserir/atualizar preferências
@@ -378,12 +385,12 @@ class ProfileController extends BaseController {
             
             $stmt->execute([
                 $this->user['id'],
-                $data['idioma'],
-                $data['fuso_horario'],
-                $data['formato_data'],
-                $data['tema'],
-                $data['interface_compacta'],
-                $data['animacoes_reduzidas'],
+                $data['language'],
+                $data['timezone'],
+                $data['date_format'],
+                $data['theme'],
+                $data['compact_interface'],
+                $data['reduced_animations'],
                 $data['email_notifications'],
                 $data['system_notifications'],
                 $data['ai_updates'],
@@ -400,6 +407,62 @@ class ProfileController extends BaseController {
             error_log("Erro ao salvar preferências: " . $e->getMessage());
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+    
+    public function getPreferences() {
+        $this->requireAuth();
+        
+        try {
+            // Buscar preferências do usuário
+            $stmt = $this->db->prepare("
+                SELECT language, timezone, date_format, theme, compact_interface, 
+                       reduced_animations, email_notifications, system_notifications, 
+                       ai_updates, newsletter
+                FROM user_profiles_extended 
+                WHERE user_id = ?
+            ");
+            $stmt->execute([$this->user['id']]);
+            $preferences = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            // Se não existir, retornar padrões
+            if (!$preferences) {
+                $preferences = [
+                    'language' => 'pt-BR',
+                    'timezone' => 'America/Sao_Paulo',
+                    'date_format' => 'dd/mm/yyyy',
+                    'theme' => 'claro',
+                    'compact_interface' => false,
+                    'reduced_animations' => false,
+                    'email_notifications' => true,
+                    'system_notifications' => true,
+                    'ai_updates' => false,
+                    'newsletter' => false
+                ];
+            } else {
+                // Converter valores booleanos
+                $preferences['compact_interface'] = (bool)$preferences['compact_interface'];
+                $preferences['reduced_animations'] = (bool)$preferences['reduced_animations'];
+                $preferences['email_notifications'] = (bool)$preferences['email_notifications'];
+                $preferences['system_notifications'] = (bool)$preferences['system_notifications'];
+                $preferences['ai_updates'] = (bool)$preferences['ai_updates'];
+                $preferences['newsletter'] = (bool)$preferences['newsletter'];
+            }
+            
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => true,
+                'preferences' => $preferences
+            ]);
+            
+        } catch (Exception $e) {
+            error_log("Erro ao buscar preferências: " . $e->getMessage());
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'message' => 'Erro interno do servidor'
+            ]);
         }
         exit;
     }
@@ -673,6 +736,613 @@ class ProfileController extends BaseController {
             error_log("Erro ao selecionar avatar: " . $e->getMessage());
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+    
+    // =================== MÉTODOS DE 2FA ===================
+    
+    public function enable2FA() {
+        $this->requireAuth();
+        
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Método não permitido']);
+            exit;
+        }
+        
+        try {
+            require_once SRC_PATH . '/services/TwoFactorService.php';
+            
+            // Gerar novo segredo
+            $secret = TwoFactorService::generateSecret();
+            
+            // Salvar temporariamente (não ativar ainda)
+            $stmt = $this->db->prepare("
+                INSERT INTO user_profiles_extended 
+                (user_id, two_factor_secret, two_factor_enabled) 
+                VALUES (?, ?, FALSE)
+                ON DUPLICATE KEY UPDATE
+                two_factor_secret = VALUES(two_factor_secret), updated_at = NOW()
+            ");
+            $stmt->execute([$this->user['id'], $secret]);
+            
+            // Gerar QR Code URL
+            $qrCodeURL = TwoFactorService::getQRCodeURL($secret, $this->user['email']);
+            
+            // Log da ação
+            $this->logUserAction($this->user['id'], '2fa_setup_started', 'Usuário iniciou configuração de 2FA', true);
+            
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => true,
+                'secret' => $secret,
+                'qrCodeURL' => $qrCodeURL,
+                'message' => 'QR Code gerado. Configure seu app e insira o código para ativar.'
+            ]);
+            
+        } catch (Exception $e) {
+            error_log("Erro ao iniciar 2FA: " . $e->getMessage());
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Erro interno. Tente novamente.']);
+        }
+        exit;
+    }
+    
+    public function confirm2FA() {
+        $this->requireAuth();
+        
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Método não permitido']);
+            exit;
+        }
+        
+        try {
+            require_once SRC_PATH . '/services/TwoFactorService.php';
+            
+            $code = trim($_POST['code'] ?? '');
+            
+            if (empty($code) || !preg_match('/^\d{6}$/', $code)) {
+                throw new Exception('Código inválido. Digite um código de 6 dígitos.');
+            }
+            
+            // Buscar segredo temporário
+            $stmt = $this->db->prepare("
+                SELECT two_factor_secret 
+                FROM user_profiles_extended 
+                WHERE user_id = ? AND two_factor_secret IS NOT NULL
+            ");
+            $stmt->execute([$this->user['id']]);
+            $secret = $stmt->fetchColumn();
+            
+            if (!$secret) {
+                throw new Exception('Configuração não iniciada. Gere um novo QR Code.');
+            }
+            
+            // Verificar código
+            if (!TwoFactorService::verifyCode($secret, $code)) {
+                throw new Exception('Código incorreto. Verifique seu app e tente novamente.');
+            }
+            
+            // Gerar códigos de backup
+            $backupCodes = TwoFactorService::generateBackupCodes();
+            
+            // Ativar 2FA
+            $stmt = $this->db->prepare("
+                UPDATE user_profiles_extended 
+                SET two_factor_enabled = TRUE, 
+                    backup_codes = ?, 
+                    updated_at = NOW()
+                WHERE user_id = ?
+            ");
+            $stmt->execute([json_encode($backupCodes), $this->user['id']]);
+            
+            // Log da ação
+            $this->logUserAction($this->user['id'], '2fa_enabled', 'Autenticação de dois fatores ativada', true);
+            
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => true,
+                'message' => '2FA ativado com sucesso!',
+                'backupCodes' => $backupCodes
+            ]);
+            
+        } catch (Exception $e) {
+            error_log("Erro ao confirmar 2FA: " . $e->getMessage());
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+    
+    public function disable2FA() {
+        $this->requireAuth();
+        
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Método não permitido']);
+            exit;
+        }
+        
+        try {
+            $this->validateCSRF();
+            
+            require_once SRC_PATH . '/services/TwoFactorService.php';
+            
+            // Verificar se 2FA está ativado
+            $stmt = $this->db->prepare("
+                SELECT two_factor_enabled
+                FROM user_profiles_extended 
+                WHERE user_id = ?
+            ");
+            $stmt->execute([$this->user['id']]);
+            $twoFAEnabled = $stmt->fetchColumn();
+            
+            if (!$twoFAEnabled) {
+                throw new Exception('2FA não está ativado.');
+            }
+            
+            // Desativar 2FA
+            $stmt = $this->db->prepare("
+                UPDATE user_profiles_extended 
+                SET two_factor_enabled = FALSE, 
+                    two_factor_secret = NULL, 
+                    backup_codes = NULL, 
+                    updated_at = NOW()
+                WHERE user_id = ?
+            ");
+            $stmt->execute([$this->user['id']]);
+            
+            // Log da ação
+            $this->logUserAction($this->user['id'], '2fa_disabled', 'Autenticação de dois fatores desativada', true);
+            
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => true,
+                'message' => '2FA desativado com sucesso!'
+            ]);
+            
+        } catch (Exception $e) {
+            error_log("Erro ao desativar 2FA: " . $e->getMessage());
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+    
+    public function get2FAStatus() {
+        $this->requireAuth();
+        
+        try {
+            $stmt = $this->db->prepare("
+                SELECT two_factor_enabled, 
+                       CASE WHEN backup_codes IS NOT NULL 
+                            THEN JSON_LENGTH(backup_codes) 
+                            ELSE 0 
+                       END as backup_codes_count
+                FROM user_profiles_extended 
+                WHERE user_id = ?
+            ");
+            $stmt->execute([$this->user['id']]);
+            $status = $stmt->fetch();
+            
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => true,
+                'enabled' => (bool)($status['two_factor_enabled'] ?? false),
+                'backupCodesCount' => (int)($status['backup_codes_count'] ?? 0)
+            ]);
+            
+        } catch (Exception $e) {
+            error_log("Erro ao buscar status 2FA: " . $e->getMessage());
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Erro ao buscar status.']);
+        }
+        exit;
+    }
+    
+    public function regenerateBackupCodes() {
+        $this->requireAuth();
+        
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Método não permitido']);
+            exit;
+        }
+        
+        try {
+            require_once SRC_PATH . '/services/TwoFactorService.php';
+            
+            $password = $_POST['password'] ?? '';
+            
+            // Verificar senha atual
+            $stmt = $this->db->prepare("SELECT password FROM users WHERE id = ?");
+            $stmt->execute([$this->user['id']]);
+            $currentPassword = $stmt->fetchColumn();
+            
+            if (!password_verify($password, $currentPassword)) {
+                throw new Exception('Senha incorreta.');
+            }
+            
+            // Verificar se 2FA está ativo
+            $stmt = $this->db->prepare("
+                SELECT two_factor_enabled 
+                FROM user_profiles_extended 
+                WHERE user_id = ?
+            ");
+            $stmt->execute([$this->user['id']]);
+            $enabled = $stmt->fetchColumn();
+            
+            if (!$enabled) {
+                throw new Exception('2FA não está ativado.');
+            }
+            
+            // Gerar novos códigos
+            $backupCodes = TwoFactorService::generateBackupCodes();
+            
+            // Salvar códigos
+            $stmt = $this->db->prepare("
+                UPDATE user_profiles_extended 
+                SET backup_codes = ?, updated_at = NOW()
+                WHERE user_id = ?
+            ");
+            $stmt->execute([json_encode($backupCodes), $this->user['id']]);
+            
+            // Log da ação
+            $this->logUserAction($this->user['id'], 'backup_codes_regenerated', 'Códigos de backup regenerados', true);
+            
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => true,
+                'message' => 'Novos códigos de backup gerados!',
+                'backupCodes' => $backupCodes
+            ]);
+            
+        } catch (Exception $e) {
+            error_log("Erro ao regenerar códigos: " . $e->getMessage());
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+    
+    // =================== MÉTODOS AUXILIARES ===================
+    
+    // Tabela user_sessions é criada automaticamente pelo SmartMigrationManager
+    
+    private function forceCreateCurrentSession($userId) {
+        try {
+            $sessionId = session_id();
+            $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Sistema';
+            $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+            
+            // Detectar dispositivo básico
+            $device = 'Desktop';
+            $browser = 'Navegador';
+            $os = 'Sistema';
+            
+            if (preg_match('/Mobile|Android|iPhone|iPad/', $userAgent)) {
+                $device = preg_match('/iPad/', $userAgent) ? 'Tablet' : 'Mobile';
+            }
+            
+            if (preg_match('/Chrome/', $userAgent)) $browser = 'Chrome';
+            elseif (preg_match('/Firefox/', $userAgent)) $browser = 'Firefox';
+            elseif (preg_match('/Safari/', $userAgent)) $browser = 'Safari';
+            elseif (preg_match('/Edge/', $userAgent)) $browser = 'Edge';
+            
+            if (preg_match('/Windows/', $userAgent)) $os = 'Windows';
+            elseif (preg_match('/Mac/', $userAgent)) $os = 'macOS';
+            elseif (preg_match('/Linux/', $userAgent)) $os = 'Linux';
+            elseif (preg_match('/Android/', $userAgent)) $os = 'Android';
+            elseif (preg_match('/iOS/', $userAgent)) $os = 'iOS';
+            
+            // Marcar outras como não-atual
+            $stmt = $this->db->prepare("UPDATE user_sessions SET is_current = FALSE WHERE user_id = ?");
+            $stmt->execute([$userId]);
+            
+            // Inserir sessão atual obrigatoriamente
+            $stmt = $this->db->prepare("
+                INSERT INTO user_sessions (
+                    id, user_id, user_agent, ip_address, location, 
+                    device_type, browser, os, is_current, is_active, expires_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, TRUE, TRUE, DATE_ADD(NOW(), INTERVAL 30 DAY))
+                ON DUPLICATE KEY UPDATE
+                    is_current = TRUE,
+                    is_active = TRUE,
+                    last_activity = CURRENT_TIMESTAMP,
+                    expires_at = DATE_ADD(NOW(), INTERVAL 30 DAY)
+            ");
+            
+            return $stmt->execute([
+                $sessionId,
+                $userId,
+                $userAgent,
+                $ipAddress,
+                'Sessão Atual',
+                $device,
+                $browser,
+                $os
+            ]);
+            
+        } catch (Exception $e) {
+            error_log("Erro ao forçar criação de sessão atual: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    private function guaranteeCurrentSession($userId) {
+        try {
+            $sessionId = session_id();
+            $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Sistema';
+            $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+            
+            // Detectar dispositivo
+            $device = 'Desktop';
+            $browser = 'Navegador';
+            $os = 'Sistema';
+            
+            if (preg_match('/Mobile|Android|iPhone/', $userAgent)) {
+                $device = 'Mobile';
+            } elseif (preg_match('/iPad/', $userAgent)) {
+                $device = 'Tablet';
+            }
+            
+            if (preg_match('/Chrome/', $userAgent)) $browser = 'Chrome';
+            elseif (preg_match('/Firefox/', $userAgent)) $browser = 'Firefox';
+            elseif (preg_match('/Safari/', $userAgent)) $browser = 'Safari';
+            elseif (preg_match('/Edge/', $userAgent)) $browser = 'Edge';
+            
+            if (preg_match('/Windows/', $userAgent)) $os = 'Windows';
+            elseif (preg_match('/Mac/', $userAgent)) $os = 'macOS';
+            elseif (preg_match('/Linux/', $userAgent)) $os = 'Linux';
+            elseif (preg_match('/Android/', $userAgent)) $os = 'Android';
+            elseif (preg_match('/iOS/', $userAgent)) $os = 'iOS';
+            
+            // Marcar outras sessões como não-atuais
+            $stmt = $this->db->prepare("UPDATE user_sessions SET is_current = FALSE WHERE user_id = ?");
+            $stmt->execute([$userId]);
+            
+            // Inserir ou atualizar sessão atual
+            $stmt = $this->db->prepare("
+                INSERT INTO user_sessions (
+                    id, user_id, user_agent, ip_address, location, 
+                    device_type, browser, os, is_current, is_active, expires_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, TRUE, TRUE, DATE_ADD(NOW(), INTERVAL 30 DAY))
+                ON DUPLICATE KEY UPDATE
+                    user_agent = VALUES(user_agent),
+                    ip_address = VALUES(ip_address),
+                    is_current = TRUE,
+                    is_active = TRUE,
+                    last_activity = NOW(),
+                    expires_at = DATE_ADD(NOW(), INTERVAL 30 DAY)
+            ");
+            
+            return $stmt->execute([
+                $sessionId, $userId, $userAgent, $ipAddress, 
+                'Sessão Atual', $device, $browser, $os
+            ]);
+            
+        } catch (Exception $e) {
+            error_log("Erro ao garantir sessão atual: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    private function getDirectUserSessions($userId) {
+        try {
+            $stmt = $this->db->prepare("
+                SELECT 
+                    id,
+                    user_agent,
+                    ip_address,
+                    location,
+                    device_type,
+                    browser,
+                    os,
+                    is_current,
+                    created_at,
+                    last_activity,
+                    CASE 
+                        WHEN last_activity > DATE_SUB(NOW(), INTERVAL 5 MINUTE) THEN 'online'
+                        WHEN last_activity > DATE_SUB(NOW(), INTERVAL 1 HOUR) THEN 'recent'
+                        ELSE 'offline'
+                    END as status
+                FROM user_sessions 
+                WHERE user_id = ? AND is_active = TRUE AND expires_at > NOW()
+                ORDER BY is_current DESC, last_activity DESC
+            ");
+            
+            $stmt->execute([$userId]);
+            $sessions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Formatar cada sessão
+            $formattedSessions = [];
+            foreach ($sessions as $session) {
+                $formattedSessions[] = [
+                    'id' => $session['id'],
+                    'device_icon' => $this->getDeviceIcon($session['device_type']),
+                    'browser_icon' => $this->getBrowserIcon($session['browser']),
+                    'device_name' => $session['device_type'],
+                    'browser_name' => $session['browser'],
+                    'os_name' => $session['os'],
+                    'ip_address' => $session['ip_address'],
+                    'location' => $session['location'],
+                    'status' => $session['status'],
+                    'status_class' => 'status-' . $session['status'],
+                    'is_current' => $session['is_current'],
+                    'created_at' => $session['created_at'],
+                    'last_activity' => $session['last_activity'],
+                    'formatted_created' => DateTimeHelper::formatDateTime($session['created_at']),
+                    'formatted_activity' => $this->formatTimeAgo($session['last_activity'])
+                ];
+            }
+            
+            return $formattedSessions;
+            
+        } catch (Exception $e) {
+            error_log("Erro ao buscar sessões diretamente: " . $e->getMessage());
+            return [];
+        }
+    }
+    
+    private function getDeviceIcon($device) {
+        switch ($device) {
+            case 'Mobile': return 'fas fa-mobile-alt';
+            case 'Tablet': return 'fas fa-tablet-alt';
+            default: return 'fas fa-desktop';
+        }
+    }
+    
+    private function getBrowserIcon($browser) {
+        switch ($browser) {
+            case 'Chrome': return 'fab fa-chrome';
+            case 'Firefox': return 'fab fa-firefox';
+            case 'Safari': return 'fab fa-safari';
+            case 'Edge': return 'fab fa-edge';
+            default: return 'fas fa-globe';
+        }
+    }
+    
+    private function formatTimeAgo($datetime) {
+        $time = time() - strtotime($datetime);
+        
+        if ($time < 60) return 'Agora mesmo';
+        if ($time < 3600) return floor($time/60) . ' min atrás';
+        if ($time < 86400) return floor($time/3600) . ' h atrás';
+        if ($time < 2592000) return floor($time/86400) . ' dias atrás';
+        
+        return date('d/m/Y', strtotime($datetime));
+    }
+    
+    // =================== MÉTODOS DE GESTÃO DE SESSÕES ===================
+    
+    public function getSessions() {
+        $this->requireAuth();
+        
+        try {
+            // Garantir estrutura correta da tabela user_sessions
+            require_once SRC_PATH . '/models/SmartMigrationManager.php';
+            $migrationManager = new SmartMigrationManager($this->db);
+            $migrationManager->createUserSessionsTable();
+            
+            // SEMPRE criar/garantir sessão atual do usuário logado
+            $this->guaranteeCurrentSession($this->user['id']);
+            
+            // Buscar sessões do usuário
+            $sessions = $this->getDirectUserSessions($this->user['id']);
+            
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => true,
+                'sessions' => $sessions
+            ]);
+        } catch (Exception $e) {
+            error_log("Erro ao buscar sessões: " . $e->getMessage());
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'message' => 'Erro interno do servidor'
+            ]);
+        }
+        exit;
+    }
+    
+    public function revokeSession() {
+        $this->requireAuth();
+        
+        try {
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Método não permitido']);
+                exit;
+            }
+            
+            $this->validateCSRF();
+            
+            $sessionId = $_POST['session_id'] ?? '';
+            
+            if (empty($sessionId)) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'ID da sessão é obrigatório']);
+                exit;
+            }
+            
+            require_once SRC_PATH . '/services/SessionManager.php';
+            $sessionManager = new SessionManager($this->db);
+            
+            $result = $sessionManager->revokeSession($sessionId, $this->user['id']);
+            
+            if ($result) {
+                $this->logUserAction($this->user['id'], 'session_revoked', "Sessão revogada: $sessionId");
+                
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Sessão revogada com sucesso'
+                ]);
+            } else {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Erro ao revogar sessão'
+                ]);
+            }
+        } catch (Exception $e) {
+            error_log("Erro ao revogar sessão: " . $e->getMessage());
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'message' => 'Erro interno do servidor'
+            ]);
+        }
+        exit;
+    }
+    
+    public function revokeAllSessions() {
+        $this->requireAuth();
+        
+        try {
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Método não permitido']);
+                exit;
+            }
+            
+            $this->validateCSRF();
+            
+            // Revogar todas as outras sessões diretamente
+            $currentSessionId = session_id();
+            $stmt = $this->db->prepare("
+                UPDATE user_sessions 
+                SET is_active = FALSE 
+                WHERE user_id = ? AND id != ?
+            ");
+            
+            $result = $stmt->execute([$this->user['id'], $currentSessionId]);
+            
+            if ($result) {
+                $this->logUserAction($this->user['id'], 'all_sessions_revoked', 'Todas as outras sessões foram revogadas');
+                
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Todas as outras sessões foram revogadas'
+                ]);
+            } else {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Erro ao revogar sessões'
+                ]);
+            }
+        } catch (Exception $e) {
+            error_log("Erro ao revogar todas as sessões: " . $e->getMessage());
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'message' => 'Erro interno do servidor'
+            ]);
         }
         exit;
     }
