@@ -10,17 +10,36 @@ class ProfileController extends BaseController {
     public function index() {
         $this->requireAuth();
         
-        // Buscar dados completos do usuário
+        // Garantir que a tabela user_profiles_extended existe
+        require_once SRC_PATH . '/models/SmartMigrationManager.php';
+        SmartMigrationManager::ensureTable('user_profiles_extended');
+        
+        // Buscar dados completos do usuário com JOIN na tabela estendida
         $stmt = $this->db->prepare("
-            SELECT id, email, name, role, status, created_at, last_login, updated_at
-            FROM users 
-            WHERE id = ? AND deleted_at IS NULL
+            SELECT u.id, u.email, u.name, u.role, u.status, u.created_at, u.last_login, u.updated_at,
+                   p.phone, p.birth_date, p.gender, p.marital_status, p.cep, p.address, p.number, 
+                   p.complement, p.neighborhood, p.city, p.state, p.crefito, p.main_specialty, 
+                   p.education, p.graduation_year, p.experience_time, p.workplace, 
+                   p.secondary_specialties, p.professional_bio, p.language, p.timezone, 
+                   p.date_format, p.theme, p.compact_interface, p.reduced_animations,
+                   p.email_notifications, p.system_notifications, p.ai_updates, p.newsletter,
+                   p.two_factor_enabled, p.two_factor_secret, p.avatar_type, p.avatar_path, p.avatar_default
+            FROM users u
+            LEFT JOIN user_profiles_extended p ON u.id = p.user_id
+            WHERE u.id = ? AND u.deleted_at IS NULL
         ");
         $stmt->execute([$this->user['id']]);
         $userProfile = $stmt->fetch();
         
         if (!$userProfile) {
             $this->logout();
+        }
+        
+        // Processar especialidades secundárias (JSON)
+        if (!empty($userProfile['secondary_specialties'])) {
+            $userProfile['secondary_specialties_array'] = json_decode($userProfile['secondary_specialties'], true) ?: [];
+        } else {
+            $userProfile['secondary_specialties_array'] = [];
         }
         
         // Buscar últimos acessos
@@ -104,6 +123,285 @@ class ProfileController extends BaseController {
             $this->flash('error', 'Erro ao atualizar perfil. Tente novamente.');
             error_log("Erro ao atualizar perfil: " . $e->getMessage());
         }
+    }
+    
+    public function savePersonalData() {
+        $this->requireAuth();
+        
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Método não permitido']);
+            exit;
+        }
+        
+        // Garantir que a tabela user_profiles_extended existe
+        require_once SRC_PATH . '/models/SmartMigrationManager.php';
+        SmartMigrationManager::ensureTable('user_profiles_extended');
+        
+        try {
+            $data = [
+                'nome' => trim($_POST['nome'] ?? ''),
+                'email' => trim($_POST['email'] ?? ''),
+                'telefone' => trim($_POST['telefone'] ?? ''),
+                'data_nascimento' => $_POST['data_nascimento'] ?? null,
+                'genero' => $_POST['genero'] ?? null,
+                'estado_civil' => $_POST['estado_civil'] ?? null,
+                'cep' => trim($_POST['cep'] ?? ''),
+                'endereco' => trim($_POST['endereco'] ?? ''),
+                'numero' => trim($_POST['numero'] ?? ''),
+                'complemento' => trim($_POST['complemento'] ?? ''),
+                'bairro' => trim($_POST['bairro'] ?? ''),
+                'cidade' => trim($_POST['cidade'] ?? ''),
+                'estado' => $_POST['estado'] ?? null
+            ];
+            
+            // Validações básicas
+            if (empty($data['nome'])) {
+                throw new Exception('Nome é obrigatório');
+            }
+            
+            if (empty($data['email']) || !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+                throw new Exception('Email válido é obrigatório');
+            }
+            
+            // Verificar se email já existe para outro usuário
+            if ($data['email'] !== $this->user['email']) {
+                $stmt = $this->db->prepare("SELECT id FROM users WHERE email = ? AND id != ? AND deleted_at IS NULL");
+                $stmt->execute([$data['email'], $this->user['id']]);
+                if ($stmt->fetch()) {
+                    throw new Exception('Este email já está em uso por outro usuário');
+                }
+            }
+            
+            // Atualizar dados básicos na tabela users
+            $stmt = $this->db->prepare("UPDATE users SET name = ?, email = ?, updated_at = NOW() WHERE id = ?");
+            $stmt->execute([$data['nome'], $data['email'], $this->user['id']]);
+            
+            // Inserir/atualizar dados estendidos
+            $stmt = $this->db->prepare("
+                INSERT INTO user_profiles_extended 
+                (user_id, phone, birth_date, gender, marital_status, cep, address, number, complement, neighborhood, city, state) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                phone = VALUES(phone), birth_date = VALUES(birth_date), gender = VALUES(gender), 
+                marital_status = VALUES(marital_status), cep = VALUES(cep), address = VALUES(address),
+                number = VALUES(number), complement = VALUES(complement), neighborhood = VALUES(neighborhood), 
+                city = VALUES(city), state = VALUES(state), updated_at = NOW()
+            ");
+            
+            $stmt->execute([
+                $this->user['id'],
+                $data['telefone'] ?: null,
+                $data['data_nascimento'] ?: null,
+                $data['genero'] ?: null,
+                $data['estado_civil'] ?: null,
+                $data['cep'] ?: null,
+                $data['endereco'] ?: null,
+                $data['numero'] ?: null,
+                $data['complemento'] ?: null,
+                $data['bairro'] ?: null,
+                $data['cidade'] ?: null,
+                $data['estado'] ?: null
+            ]);
+            
+            // Atualizar dados da sessão
+            $_SESSION['user_name'] = $data['nome'];
+            $_SESSION['user_email'] = $data['email'];
+            
+            // Log da ação
+            $this->logUserAction($this->user['id'], 'personal_data_updated', 'Dados pessoais atualizados', true);
+            
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Dados pessoais salvos com sucesso!']);
+            
+        } catch (Exception $e) {
+            error_log("Erro ao salvar dados pessoais: " . $e->getMessage());
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+    
+    public function saveProfessionalData() {
+        $this->requireAuth();
+        
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Método não permitido']);
+            exit;
+        }
+        
+        try {
+            $data = [
+                'crefito' => trim($_POST['crefito'] ?? ''),
+                'especialidade' => $_POST['especialidade'] ?? null,
+                'formacao' => trim($_POST['formacao'] ?? ''),
+                'ano_formacao' => $_POST['ano_formacao'] ?? null,
+                'tempo_experiencia' => $_POST['tempo_experiencia'] ?? null,
+                'local_trabalho' => trim($_POST['local_trabalho'] ?? ''),
+                'especialidades' => $_POST['especialidades'] ?? [],
+                'bio_profissional' => trim($_POST['bio_profissional'] ?? '')
+            ];
+            
+            // Processar especialidades secundárias
+            $especialidades_json = !empty($data['especialidades']) ? json_encode($data['especialidades']) : null;
+            
+            // Inserir/atualizar dados profissionais
+            $stmt = $this->db->prepare("
+                INSERT INTO user_profiles_extended 
+                (user_id, crefito, main_specialty, education, graduation_year, experience_time, workplace, secondary_specialties, professional_bio) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                crefito = VALUES(crefito), main_specialty = VALUES(main_specialty), education = VALUES(education),
+                graduation_year = VALUES(graduation_year), experience_time = VALUES(experience_time), 
+                workplace = VALUES(workplace), secondary_specialties = VALUES(secondary_specialties),
+                professional_bio = VALUES(professional_bio), updated_at = NOW()
+            ");
+            
+            $stmt->execute([
+                $this->user['id'],
+                $data['crefito'] ?: null,
+                $data['especialidade'] ?: null,
+                $data['formacao'] ?: null,
+                $data['ano_formacao'] ?: null,
+                $data['tempo_experiencia'] ?: null,
+                $data['local_trabalho'] ?: null,
+                $especialidades_json,
+                $data['bio_profissional'] ?: null
+            ]);
+            
+            // Log da ação
+            $this->logUserAction($this->user['id'], 'professional_data_updated', 'Dados profissionais atualizados', true);
+            
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Dados profissionais salvos com sucesso!']);
+            
+        } catch (Exception $e) {
+            error_log("Erro ao salvar dados profissionais: " . $e->getMessage());
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+    
+    public function changePassword() {
+        $this->requireAuth();
+        
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Método não permitido']);
+            exit;
+        }
+        
+        try {
+            $senhaAtual = $_POST['senha_atual'] ?? '';
+            $novaSenha = $_POST['nova_senha'] ?? '';
+            $confirmarSenha = $_POST['confirmar_senha'] ?? '';
+            
+            // Validações
+            if (empty($senhaAtual) || empty($novaSenha) || empty($confirmarSenha)) {
+                throw new Exception('Todos os campos são obrigatórios');
+            }
+            
+            if ($novaSenha !== $confirmarSenha) {
+                throw new Exception('As senhas não coincidem');
+            }
+            
+            if (strlen($novaSenha) < 8) {
+                throw new Exception('A nova senha deve ter pelo menos 8 caracteres');
+            }
+            
+            // Verificar senha atual
+            $stmt = $this->db->prepare("SELECT password FROM users WHERE id = ?");
+            $stmt->execute([$this->user['id']]);
+            $currentPassword = $stmt->fetchColumn();
+            
+            if (!password_verify($senhaAtual, $currentPassword)) {
+                throw new Exception('Senha atual incorreta');
+            }
+            
+            // Atualizar senha
+            $novaSenhaHash = password_hash($novaSenha, PASSWORD_DEFAULT);
+            $stmt = $this->db->prepare("UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?");
+            $stmt->execute([$novaSenhaHash, $this->user['id']]);
+            
+            // Log da ação
+            $this->logUserAction($this->user['id'], 'password_changed', 'Senha alterada pelo usuário', true);
+            
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Senha alterada com sucesso!']);
+            
+        } catch (Exception $e) {
+            error_log("Erro ao alterar senha: " . $e->getMessage());
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+    
+    public function savePreferences() {
+        $this->requireAuth();
+        
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Método não permitido']);
+            exit;
+        }
+        
+        try {
+            $data = [
+                'idioma' => $_POST['idioma'] ?? 'pt-BR',
+                'fuso_horario' => $_POST['fuso_horario'] ?? 'America/Sao_Paulo',
+                'formato_data' => $_POST['formato_data'] ?? 'dd/mm/yyyy',
+                'tema' => $_POST['tema'] ?? 'claro',
+                'interface_compacta' => isset($_POST['interface_compacta']) ? 1 : 0,
+                'animacoes_reduzidas' => isset($_POST['animacoes_reduzidas']) ? 1 : 0,
+                'email_notifications' => isset($_POST['email_notifications']) ? 1 : 0,
+                'system_notifications' => isset($_POST['system_notifications']) ? 1 : 0,
+                'ai_updates' => isset($_POST['ai_updates']) ? 1 : 0,
+                'newsletter' => isset($_POST['newsletter']) ? 1 : 0
+            ];
+            
+            // Inserir/atualizar preferências
+            $stmt = $this->db->prepare("
+                INSERT INTO user_profiles_extended 
+                (user_id, language, timezone, date_format, theme, compact_interface, reduced_animations,
+                 email_notifications, system_notifications, ai_updates, newsletter) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                language = VALUES(language), timezone = VALUES(timezone), date_format = VALUES(date_format),
+                theme = VALUES(theme), compact_interface = VALUES(compact_interface), 
+                reduced_animations = VALUES(reduced_animations), email_notifications = VALUES(email_notifications),
+                system_notifications = VALUES(system_notifications), ai_updates = VALUES(ai_updates),
+                newsletter = VALUES(newsletter), updated_at = NOW()
+            ");
+            
+            $stmt->execute([
+                $this->user['id'],
+                $data['idioma'],
+                $data['fuso_horario'],
+                $data['formato_data'],
+                $data['tema'],
+                $data['interface_compacta'],
+                $data['animacoes_reduzidas'],
+                $data['email_notifications'],
+                $data['system_notifications'],
+                $data['ai_updates'],
+                $data['newsletter']
+            ]);
+            
+            // Log da ação
+            $this->logUserAction($this->user['id'], 'preferences_updated', 'Preferências atualizadas', true);
+            
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Preferências salvas com sucesso!']);
+            
+        } catch (Exception $e) {
+            error_log("Erro ao salvar preferências: " . $e->getMessage());
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
     }
     
     public function privacy() {
@@ -249,6 +547,134 @@ class ProfileController extends BaseController {
         ");
         $stmt->execute([$this->user['id'], $limit]);
         return $stmt->fetchAll();
+    }
+    
+    public function uploadAvatar() {
+        $this->requireAuth();
+        
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Método não permitido']);
+            exit;
+        }
+        
+        // Garantir que a tabela user_profiles_extended existe
+        require_once SRC_PATH . '/models/SmartMigrationManager.php';
+        SmartMigrationManager::ensureTable('user_profiles_extended');
+        
+        try {
+            if (!isset($_FILES['avatar']) || $_FILES['avatar']['error'] !== UPLOAD_ERR_OK) {
+                throw new Exception('Erro no upload do arquivo');
+            }
+            
+            $file = $_FILES['avatar'];
+            
+            // Validações
+            $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+            if (!in_array($file['type'], $allowedTypes)) {
+                throw new Exception('Tipo de arquivo não permitido. Use JPG, PNG, GIF ou WEBP.');
+            }
+            
+            if ($file['size'] > 2 * 1024 * 1024) { // 2MB
+                throw new Exception('Arquivo muito grande. Máximo 2MB.');
+            }
+            
+            // Criar diretório se não existir
+            $uploadDir = ROOT_PATH . '/public/uploads/avatars/';
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
+            
+            // Gerar nome único
+            $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+            $fileName = 'avatar_' . $this->user['id'] . '_' . time() . '.' . $extension;
+            $filePath = $uploadDir . $fileName;
+            
+            // Mover arquivo
+            if (!move_uploaded_file($file['tmp_name'], $filePath)) {
+                throw new Exception('Erro ao salvar arquivo');
+            }
+            
+            // Salvar no banco
+            $relativePath = '/public/uploads/avatars/' . $fileName;
+            $stmt = $this->db->prepare("
+                INSERT INTO user_profiles_extended 
+                (user_id, avatar_type, avatar_path, avatar_default) 
+                VALUES (?, 'upload', ?, NULL)
+                ON DUPLICATE KEY UPDATE
+                avatar_type = 'upload', avatar_path = VALUES(avatar_path), 
+                avatar_default = NULL, updated_at = NOW()
+            ");
+            $stmt->execute([$this->user['id'], $relativePath]);
+            
+            // Log da ação
+            $this->logUserAction($this->user['id'], 'avatar_uploaded', 'Avatar atualizado via upload', true);
+            
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => true, 
+                'message' => 'Avatar atualizado com sucesso!',
+                'avatar_url' => $relativePath
+            ]);
+            
+        } catch (Exception $e) {
+            error_log("Erro ao fazer upload de avatar: " . $e->getMessage());
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+    
+    public function selectDefaultAvatar() {
+        $this->requireAuth();
+        
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Método não permitido']);
+            exit;
+        }
+        
+        try {
+            $avatarLetter = trim($_POST['avatar_letter'] ?? '');
+            
+            // Validações
+            if (empty($avatarLetter) || strlen($avatarLetter) !== 1) {
+                throw new Exception('Letra do avatar inválida');
+            }
+            
+            if (!ctype_alpha($avatarLetter)) {
+                throw new Exception('Avatar deve ser uma letra');
+            }
+            
+            $avatarLetter = strtoupper($avatarLetter);
+            
+            // Salvar no banco
+            $stmt = $this->db->prepare("
+                INSERT INTO user_profiles_extended 
+                (user_id, avatar_type, avatar_path, avatar_default) 
+                VALUES (?, 'default', NULL, ?)
+                ON DUPLICATE KEY UPDATE
+                avatar_type = 'default', avatar_path = NULL, 
+                avatar_default = VALUES(avatar_default), updated_at = NOW()
+            ");
+            $stmt->execute([$this->user['id'], $avatarLetter]);
+            
+            // Log da ação
+            $this->logUserAction($this->user['id'], 'avatar_selected', "Avatar padrão selecionado: $avatarLetter", true);
+            
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => true, 
+                'message' => 'Avatar selecionado com sucesso!',
+                'avatar_letter' => $avatarLetter
+            ]);
+            
+        } catch (Exception $e) {
+            error_log("Erro ao selecionar avatar: " . $e->getMessage());
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
     }
     
 }

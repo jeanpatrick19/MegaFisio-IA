@@ -263,6 +263,22 @@
             align-items: center;
             gap: 20px;
         }
+        
+        @media (max-width: 480px) {
+            .header-direita {
+                gap: 12px;
+            }
+            
+            .user-avatar-header {
+                width: 32px;
+                height: 32px;
+                margin-left: 6px;
+            }
+            
+            .user-avatar-header .avatar-letter {
+                font-size: 12px;
+            }
+        }
 
         .data-hora {
             font-size: 14px;
@@ -280,6 +296,45 @@
         .data-hora i {
             color: var(--azul-saude);
             font-size: 16px;
+        }
+
+        /* Avatar no Header */
+        .user-avatar-header {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: var(--transicao);
+            position: relative;
+            overflow: hidden;
+            border: 2px solid var(--cinza-medio);
+            margin-left: 12px;
+        }
+
+        .user-avatar-header:hover {
+            transform: scale(1.05);
+            border-color: var(--azul-saude);
+            box-shadow: 0 0 15px rgba(30, 58, 138, 0.3);
+        }
+
+        .user-avatar-header .avatar-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+
+        .user-avatar-header .avatar-letter {
+            width: 100%;
+            height: 100%;
+            background: var(--gradiente-principal);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 16px;
+            font-family: 'Inter', sans-serif;
         }
 
         .notificacoes {
@@ -479,6 +534,16 @@
                 display: none;
             }
             
+            .user-avatar-header {
+                width: 36px;
+                height: 36px;
+                margin-left: 8px;
+            }
+            
+            .user-avatar-header .avatar-letter {
+                font-size: 14px;
+            }
+            
             .area-conteudo {
                 padding: 16px;
             }
@@ -666,6 +731,22 @@
                             <i class="fas fa-calendar-alt"></i>
                             <span id="dataHoraTexto"></span>
                         </div>
+                        
+                        <?php if (isset($user) && $user): ?>
+                        <div class="user-avatar-header" data-tooltip="<?= htmlspecialchars($user['name'] ?? '') ?>" onclick="irParaPerfil()">
+                            <?php
+                            // Gerar avatar usando a mesma lógica do perfil
+                            if (!empty($user['avatar_path']) && $user['avatar_type'] === 'upload') {
+                                echo '<img src="' . htmlspecialchars($user['avatar_path']) . '" alt="Avatar" class="avatar-img">';
+                            } elseif (!empty($user['avatar_default']) && $user['avatar_type'] === 'default') {
+                                echo '<div class="avatar-letter">' . htmlspecialchars($user['avatar_default']) . '</div>';
+                            } else {
+                                $initials = strtoupper(substr($user['name'] ?? 'U', 0, 2));
+                                echo '<div class="avatar-letter">' . $initials . '</div>';
+                            }
+                            ?>
+                        </div>
+                        <?php endif; ?>
                         <script>
                         // JavaScript inline para garantir execução
                         function atualizarHora() {
@@ -685,6 +766,14 @@
                         }
                         atualizarHora();
                         setInterval(atualizarHora, 1000);
+                        
+                        // Função para ir ao perfil
+                        function irParaPerfil() {
+                            // Detectar contexto (admin ou user)
+                            const isAdminContext = window.location.pathname.includes('/admin/');
+                            const profileUrl = isAdminContext ? '/admin/profile' : '/profile';
+                            window.location.href = profileUrl;
+                        }
                         </script>
                     </div>
                 </div>

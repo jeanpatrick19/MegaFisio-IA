@@ -35,8 +35,14 @@
         <div class="card-fisio perfil-avatar-card">
             <div class="avatar-section">
                 <div class="avatar-atual">
-                    <div class="avatar-grande">
-                        <?= strtoupper(substr($user['name'] ?? 'U', 0, 2)) ?>
+                    <div class="avatar-grande" id="avatarAtual">
+                        <?php if (!empty($userProfile['avatar_path']) && $userProfile['avatar_type'] === 'upload'): ?>
+                            <img src="<?= htmlspecialchars($userProfile['avatar_path']) ?>" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                        <?php elseif (!empty($userProfile['avatar_default']) && $userProfile['avatar_type'] === 'default'): ?>
+                            <?= htmlspecialchars($userProfile['avatar_default']) ?>
+                        <?php else: ?>
+                            <?= strtoupper(substr($userProfile['name'] ?? $user['name'] ?? 'U', 0, 2)) ?>
+                        <?php endif; ?>
                     </div>
                     <div class="avatar-status online"></div>
                 </div>
@@ -69,32 +75,32 @@
                 <div class="form-grid-perfil">
                     <div class="form-grupo">
                         <label for="nomeCompleto">Nome Completo *</label>
-                        <input type="text" id="nomeCompleto" name="nome" value="<?= htmlspecialchars($user['name'] ?? '') ?>" required>
+                        <input type="text" id="nomeCompleto" name="nome" value="<?= htmlspecialchars($userProfile['name'] ?? '') ?>" required>
                     </div>
                     
                     <div class="form-grupo">
                         <label for="email">Email *</label>
-                        <input type="email" id="email" name="email" value="<?= htmlspecialchars($user['email'] ?? '') ?>" required>
+                        <input type="email" id="email" name="email" value="<?= htmlspecialchars($userProfile['email'] ?? '') ?>" required>
                     </div>
                     
                     <div class="form-grupo">
                         <label for="telefone">Telefone</label>
-                        <input type="tel" id="telefone" name="telefone" value="<?= htmlspecialchars($user['phone'] ?? '') ?>" placeholder="(11) 99999-9999">
+                        <input type="tel" id="telefone" name="telefone" value="<?= htmlspecialchars($userProfile['phone'] ?? '') ?>" placeholder="(11) 99999-9999">
                     </div>
                     
                     <div class="form-grupo">
                         <label for="dataNascimento">Data de Nascimento</label>
-                        <input type="date" id="dataNascimento" name="data_nascimento" value="<?= $user['birth_date'] ?? '' ?>">
+                        <input type="date" id="dataNascimento" name="data_nascimento" value="<?= $userProfile['birth_date'] ?? '' ?>">
                     </div>
                     
                     <div class="form-grupo">
                         <label for="genero">Gênero</label>
                         <select id="genero" name="genero">
                             <option value="">Selecione...</option>
-                            <option value="masculino">Masculino</option>
-                            <option value="feminino">Feminino</option>
-                            <option value="outro">Outro</option>
-                            <option value="nao_informar">Prefiro não informar</option>
+                            <option value="masculino" <?= ($userProfile['gender'] ?? '') === 'masculino' ? 'selected' : '' ?>>Masculino</option>
+                            <option value="feminino" <?= ($userProfile['gender'] ?? '') === 'feminino' ? 'selected' : '' ?>>Feminino</option>
+                            <option value="outro" <?= ($userProfile['gender'] ?? '') === 'outro' ? 'selected' : '' ?>>Outro</option>
+                            <option value="nao_informar" <?= ($userProfile['gender'] ?? '') === 'nao_informar' ? 'selected' : '' ?>>Prefiro não informar</option>
                         </select>
                     </div>
                     
@@ -102,11 +108,11 @@
                         <label for="estadoCivil">Estado Civil</label>
                         <select id="estadoCivil" name="estado_civil">
                             <option value="">Selecione...</option>
-                            <option value="solteiro">Solteiro(a)</option>
-                            <option value="casado">Casado(a)</option>
-                            <option value="divorciado">Divorciado(a)</option>
-                            <option value="viuvo">Viúvo(a)</option>
-                            <option value="uniao_estavel">União Estável</option>
+                            <option value="solteiro" <?= ($userProfile['marital_status'] ?? '') === 'solteiro' ? 'selected' : '' ?>>Solteiro(a)</option>
+                            <option value="casado" <?= ($userProfile['marital_status'] ?? '') === 'casado' ? 'selected' : '' ?>>Casado(a)</option>
+                            <option value="divorciado" <?= ($userProfile['marital_status'] ?? '') === 'divorciado' ? 'selected' : '' ?>>Divorciado(a)</option>
+                            <option value="viuvo" <?= ($userProfile['marital_status'] ?? '') === 'viuvo' ? 'selected' : '' ?>>Viúvo(a)</option>
+                            <option value="uniao_estavel" <?= ($userProfile['marital_status'] ?? '') === 'uniao_estavel' ? 'selected' : '' ?>>União Estável</option>
                         </select>
                     </div>
                 </div>
@@ -117,76 +123,76 @@
                     <div class="form-grid-perfil">
                         <div class="form-grupo">
                             <label for="cep">CEP</label>
-                            <input type="text" id="cep" name="cep" placeholder="00000-000" onblur="buscarCep()">
+                            <input type="text" id="cep" name="cep" value="<?= htmlspecialchars($userProfile['cep'] ?? '') ?>" placeholder="00000-000" onblur="buscarCep()">
                         </div>
                         
                         <div class="form-grupo">
                             <label for="endereco">Endereço</label>
-                            <input type="text" id="endereco" name="endereco" placeholder="Rua, Avenida...">
+                            <input type="text" id="endereco" name="endereco" value="<?= htmlspecialchars($userProfile['address'] ?? '') ?>" placeholder="Rua, Avenida...">
                         </div>
                         
                         <div class="form-grupo">
                             <label for="numero">Número</label>
-                            <input type="text" id="numero" name="numero" placeholder="123">
+                            <input type="text" id="numero" name="numero" value="<?= htmlspecialchars($userProfile['number'] ?? '') ?>" placeholder="123">
                         </div>
                         
                         <div class="form-grupo">
                             <label for="complemento">Complemento</label>
-                            <input type="text" id="complemento" name="complemento" placeholder="Apto, Sala...">
+                            <input type="text" id="complemento" name="complemento" value="<?= htmlspecialchars($userProfile['complement'] ?? '') ?>" placeholder="Apto, Sala...">
                         </div>
                         
                         <div class="form-grupo">
                             <label for="bairro">Bairro</label>
-                            <input type="text" id="bairro" name="bairro">
+                            <input type="text" id="bairro" name="bairro" value="<?= htmlspecialchars($userProfile['neighborhood'] ?? '') ?>">
                         </div>
                         
                         <div class="form-grupo">
                             <label for="cidade">Cidade</label>
-                            <input type="text" id="cidade" name="cidade">
+                            <input type="text" id="cidade" name="cidade" value="<?= htmlspecialchars($userProfile['city'] ?? '') ?>">
                         </div>
                         
                         <div class="form-grupo">
                             <label for="estado">Estado</label>
                             <select id="estado" name="estado">
                                 <option value="">Selecione...</option>
-                                <option value="AC">Acre</option>
-                                <option value="AL">Alagoas</option>
-                                <option value="AP">Amapá</option>
-                                <option value="AM">Amazonas</option>
-                                <option value="BA">Bahia</option>
-                                <option value="CE">Ceará</option>
-                                <option value="DF">Distrito Federal</option>
-                                <option value="ES">Espírito Santo</option>
-                                <option value="GO">Goiás</option>
-                                <option value="MA">Maranhão</option>
-                                <option value="MT">Mato Grosso</option>
-                                <option value="MS">Mato Grosso do Sul</option>
-                                <option value="MG">Minas Gerais</option>
-                                <option value="PA">Pará</option>
-                                <option value="PB">Paraíba</option>
-                                <option value="PR">Paraná</option>
-                                <option value="PE">Pernambuco</option>
-                                <option value="PI">Piauí</option>
-                                <option value="RJ">Rio de Janeiro</option>
-                                <option value="RN">Rio Grande do Norte</option>
-                                <option value="RS">Rio Grande do Sul</option>
-                                <option value="RO">Rondônia</option>
-                                <option value="RR">Roraima</option>
-                                <option value="SC">Santa Catarina</option>
-                                <option value="SP">São Paulo</option>
-                                <option value="SE">Sergipe</option>
-                                <option value="TO">Tocantins</option>
+                                <option value="AC" <?= ($userProfile['state'] ?? '') === 'AC' ? 'selected' : '' ?>>Acre</option>
+                                <option value="AL" <?= ($userProfile['state'] ?? '') === 'AL' ? 'selected' : '' ?>>Alagoas</option>
+                                <option value="AP" <?= ($userProfile['state'] ?? '') === 'AP' ? 'selected' : '' ?>>Amapá</option>
+                                <option value="AM" <?= ($userProfile['state'] ?? '') === 'AM' ? 'selected' : '' ?>>Amazonas</option>
+                                <option value="BA" <?= ($userProfile['state'] ?? '') === 'BA' ? 'selected' : '' ?>>Bahia</option>
+                                <option value="CE" <?= ($userProfile['state'] ?? '') === 'CE' ? 'selected' : '' ?>>Ceará</option>
+                                <option value="DF" <?= ($userProfile['state'] ?? '') === 'DF' ? 'selected' : '' ?>>Distrito Federal</option>
+                                <option value="ES" <?= ($userProfile['state'] ?? '') === 'ES' ? 'selected' : '' ?>>Espírito Santo</option>
+                                <option value="GO" <?= ($userProfile['state'] ?? '') === 'GO' ? 'selected' : '' ?>>Goiás</option>
+                                <option value="MA" <?= ($userProfile['state'] ?? '') === 'MA' ? 'selected' : '' ?>>Maranhão</option>
+                                <option value="MT" <?= ($userProfile['state'] ?? '') === 'MT' ? 'selected' : '' ?>>Mato Grosso</option>
+                                <option value="MS" <?= ($userProfile['state'] ?? '') === 'MS' ? 'selected' : '' ?>>Mato Grosso do Sul</option>
+                                <option value="MG" <?= ($userProfile['state'] ?? '') === 'MG' ? 'selected' : '' ?>>Minas Gerais</option>
+                                <option value="PA" <?= ($userProfile['state'] ?? '') === 'PA' ? 'selected' : '' ?>>Pará</option>
+                                <option value="PB" <?= ($userProfile['state'] ?? '') === 'PB' ? 'selected' : '' ?>>Paraíba</option>
+                                <option value="PR" <?= ($userProfile['state'] ?? '') === 'PR' ? 'selected' : '' ?>>Paraná</option>
+                                <option value="PE" <?= ($userProfile['state'] ?? '') === 'PE' ? 'selected' : '' ?>>Pernambuco</option>
+                                <option value="PI" <?= ($userProfile['state'] ?? '') === 'PI' ? 'selected' : '' ?>>Piauí</option>
+                                <option value="RJ" <?= ($userProfile['state'] ?? '') === 'RJ' ? 'selected' : '' ?>>Rio de Janeiro</option>
+                                <option value="RN" <?= ($userProfile['state'] ?? '') === 'RN' ? 'selected' : '' ?>>Rio Grande do Norte</option>
+                                <option value="RS" <?= ($userProfile['state'] ?? '') === 'RS' ? 'selected' : '' ?>>Rio Grande do Sul</option>
+                                <option value="RO" <?= ($userProfile['state'] ?? '') === 'RO' ? 'selected' : '' ?>>Rondônia</option>
+                                <option value="RR" <?= ($userProfile['state'] ?? '') === 'RR' ? 'selected' : '' ?>>Roraima</option>
+                                <option value="SC" <?= ($userProfile['state'] ?? '') === 'SC' ? 'selected' : '' ?>>Santa Catarina</option>
+                                <option value="SP" <?= ($userProfile['state'] ?? '') === 'SP' ? 'selected' : '' ?>>São Paulo</option>
+                                <option value="SE" <?= ($userProfile['state'] ?? '') === 'SE' ? 'selected' : '' ?>>Sergipe</option>
+                                <option value="TO" <?= ($userProfile['state'] ?? '') === 'TO' ? 'selected' : '' ?>>Tocantins</option>
                             </select>
                         </div>
                     </div>
                 </div>
                 
                 <div class="form-acoes">
-                    <button type="button" class="btn-fisio btn-secundario" onclick="resetarFormulario('formDadosPessoais')">
-                        <i class="fas fa-undo"></i>
-                        Resetar
+                    <button type="button" class="btn-fisio btn-secundario" id="btnEditarPessoais" onclick="toggleEditMode('formDadosPessoais', 'btnEditarPessoais', 'btnSalvarPessoais')">
+                        <i class="fas fa-edit"></i>
+                        Editar
                     </button>
-                    <button type="submit" class="btn-fisio btn-primario">
+                    <button type="submit" class="btn-fisio btn-primario" id="btnSalvarPessoais" style="display: none;">
                         <i class="fas fa-save"></i>
                         Salvar Alterações
                     </button>
@@ -210,49 +216,49 @@
             <div class="form-grid-perfil">
                 <div class="form-grupo">
                     <label for="crefito">CREFITO</label>
-                    <input type="text" id="crefito" name="crefito" placeholder="123456-F">
+                    <input type="text" id="crefito" name="crefito" placeholder="123456-F" value="<?= htmlspecialchars($userProfile['crefito'] ?? '') ?>">
                 </div>
                 
                 <div class="form-grupo">
                     <label for="especialidade">Especialidade Principal</label>
                     <select id="especialidade" name="especialidade">
                         <option value="">Selecione...</option>
-                        <option value="ortopedica">Fisioterapia Ortopédica</option>
-                        <option value="neurologica">Fisioterapia Neurológica</option>
-                        <option value="respiratoria">Fisioterapia Respiratória</option>
-                        <option value="geriatrica">Fisioterapia Geriátrica</option>
-                        <option value="pediatrica">Fisioterapia Pediátrica</option>
-                        <option value="esportiva">Fisioterapia Esportiva</option>
-                        <option value="dermatofuncional">Dermatofuncional</option>
-                        <option value="uroginecologica">Uroginecológica</option>
+                        <option value="ortopedica" <?= ($userProfile['main_specialty'] ?? '') === 'ortopedica' ? 'selected' : '' ?>>Fisioterapia Ortopédica</option>
+                        <option value="neurologica" <?= ($userProfile['main_specialty'] ?? '') === 'neurologica' ? 'selected' : '' ?>>Fisioterapia Neurológica</option>
+                        <option value="respiratoria" <?= ($userProfile['main_specialty'] ?? '') === 'respiratoria' ? 'selected' : '' ?>>Fisioterapia Respiratória</option>
+                        <option value="geriatrica" <?= ($userProfile['main_specialty'] ?? '') === 'geriatrica' ? 'selected' : '' ?>>Fisioterapia Geriátrica</option>
+                        <option value="pediatrica" <?= ($userProfile['main_specialty'] ?? '') === 'pediatrica' ? 'selected' : '' ?>>Fisioterapia Pediátrica</option>
+                        <option value="esportiva" <?= ($userProfile['main_specialty'] ?? '') === 'esportiva' ? 'selected' : '' ?>>Fisioterapia Esportiva</option>
+                        <option value="dermatofuncional" <?= ($userProfile['main_specialty'] ?? '') === 'dermatofuncional' ? 'selected' : '' ?>>Dermatofuncional</option>
+                        <option value="uroginecologica" <?= ($userProfile['main_specialty'] ?? '') === 'uroginecologica' ? 'selected' : '' ?>>Uroginecológica</option>
                     </select>
                 </div>
                 
                 <div class="form-grupo">
                     <label for="formacao">Formação</label>
-                    <input type="text" id="formacao" name="formacao" placeholder="Universidade onde se formou">
+                    <input type="text" id="formacao" name="formacao" placeholder="Universidade onde se formou" value="<?= htmlspecialchars($userProfile['education'] ?? '') ?>">
                 </div>
                 
                 <div class="form-grupo">
                     <label for="anoFormacao">Ano de Formação</label>
-                    <input type="number" id="anoFormacao" name="ano_formacao" min="1950" max="2024" placeholder="2020">
+                    <input type="number" id="anoFormacao" name="ano_formacao" min="1950" max="2024" placeholder="2020" value="<?= $userProfile['graduation_year'] ?? '' ?>">
                 </div>
                 
                 <div class="form-grupo">
                     <label for="tempoExperiencia">Tempo de Experiência</label>
                     <select id="tempoExperiencia" name="tempo_experiencia">
                         <option value="">Selecione...</option>
-                        <option value="0-1">Menos de 1 ano</option>
-                        <option value="1-3">1 a 3 anos</option>
-                        <option value="3-5">3 a 5 anos</option>
-                        <option value="5-10">5 a 10 anos</option>
-                        <option value="10+">Mais de 10 anos</option>
+                        <option value="0-1" <?= ($userProfile['experience_time'] ?? '') === '0-1' ? 'selected' : '' ?>>Menos de 1 ano</option>
+                        <option value="1-3" <?= ($userProfile['experience_time'] ?? '') === '1-3' ? 'selected' : '' ?>>1 a 3 anos</option>
+                        <option value="3-5" <?= ($userProfile['experience_time'] ?? '') === '3-5' ? 'selected' : '' ?>>3 a 5 anos</option>
+                        <option value="5-10" <?= ($userProfile['experience_time'] ?? '') === '5-10' ? 'selected' : '' ?>>5 a 10 anos</option>
+                        <option value="10+" <?= ($userProfile['experience_time'] ?? '') === '10+' ? 'selected' : '' ?>>Mais de 10 anos</option>
                     </select>
                 </div>
                 
                 <div class="form-grupo">
                     <label for="localTrabalho">Local de Trabalho</label>
-                    <input type="text" id="localTrabalho" name="local_trabalho" placeholder="Clínica, Hospital...">
+                    <input type="text" id="localTrabalho" name="local_trabalho" placeholder="Clínica, Hospital..." value="<?= htmlspecialchars($userProfile['workplace'] ?? '') ?>">
                 </div>
             </div>
             
@@ -296,11 +302,15 @@
             <!-- Bio Profissional -->
             <div class="form-grupo">
                 <label for="bioProfissional">Biografia Profissional</label>
-                <textarea id="bioProfissional" name="bio_profissional" rows="4" placeholder="Descreva sua experiência, áreas de interesse e abordagem profissional..."></textarea>
+                <textarea id="bioProfissional" name="bio_profissional" rows="4" placeholder="Descreva sua experiência, áreas de interesse e abordagem profissional..."><?= htmlspecialchars($userProfile['professional_bio'] ?? '') ?></textarea>
             </div>
             
             <div class="form-acoes">
-                <button type="submit" class="btn-fisio btn-primario">
+                <button type="button" class="btn-fisio btn-secundario" id="btnEditarProfissionais" onclick="toggleEditMode('formDadosProfissionais', 'btnEditarProfissionais', 'btnSalvarProfissionais')">
+                    <i class="fas fa-edit"></i>
+                    Editar
+                </button>
+                <button type="submit" class="btn-fisio btn-primario" id="btnSalvarProfissionais" style="display: none;">
                     <i class="fas fa-save"></i>
                     Salvar Dados Profissionais
                 </button>
@@ -747,6 +757,10 @@
                     <div class="avatar-padrao" onclick="selecionarAvatarPadrao('B')">B</div>
                     <div class="avatar-padrao" onclick="selecionarAvatarPadrao('C')">C</div>
                     <div class="avatar-padrao" onclick="selecionarAvatarPadrao('D')">D</div>
+                    <div class="avatar-padrao" onclick="selecionarAvatarPadrao('F')">F</div>
+                    <div class="avatar-padrao" onclick="selecionarAvatarPadrao('M')">M</div>
+                    <div class="avatar-padrao" onclick="selecionarAvatarPadrao('R')">R</div>
+                    <div class="avatar-padrao" onclick="selecionarAvatarPadrao('S')">S</div>
                 </div>
             </div>
             
@@ -1578,6 +1592,47 @@
     transform: scale(1.1);
 }
 
+.avatar-padrao.selecionado {
+    background: var(--verde-terapia);
+    transform: scale(1.1);
+    box-shadow: 0 0 15px rgba(5, 150, 105, 0.5);
+}
+
+/* Campos readonly */
+.form-grupo input.readonly-field,
+.form-grupo select.readonly-field,
+.form-grupo textarea.readonly-field,
+.form-grupo input[readonly],
+.form-grupo textarea[readonly] {
+    background-color: #f8f9fa !important;
+    border-color: #e9ecef !important;
+    color: #6c757d !important;
+    cursor: not-allowed;
+}
+
+.form-grupo select.readonly-field {
+    pointer-events: none;
+    background-color: #f8f9fa !important;
+    border-color: #e9ecef !important;
+    color: #6c757d !important;
+}
+
+.checkbox-especialidade input[type="checkbox"].readonly-field + .checkmark {
+    background-color: #f8f9fa;
+    border-color: #e9ecef;
+    cursor: not-allowed;
+}
+
+.checkbox-especialidade input[type="checkbox"].readonly-field:checked + .checkmark {
+    background-color: #6c757d;
+    border-color: #6c757d;
+}
+
+/* Botões em modo edição */
+.form-acoes .btn-fisio:not(:last-child) {
+    margin-right: 12px;
+}
+
 /* Responsivo */
 @media (max-width: 1024px) {
     .perfil-grid {
@@ -1636,8 +1691,126 @@ function trocarAbaPerfil(aba) {
     document.getElementById('conteudo' + aba.charAt(0).toUpperCase() + aba.slice(1)).classList.add('ativa');
 }
 
+// Sistema de Edição/Salvamento
+function toggleEditMode(formId, btnEditarId, btnSalvarId) {
+    const form = document.getElementById(formId);
+    const btnEditar = document.getElementById(btnEditarId);
+    const btnSalvar = document.getElementById(btnSalvarId);
+    
+    const isEditing = form.dataset.editing === 'true';
+    
+    if (isEditing) {
+        // Está editando, cancelar edição
+        setFormReadonly(form, true);
+        btnEditar.innerHTML = '<i class="fas fa-edit"></i> Editar';
+        btnEditar.style.display = 'inline-block';
+        btnSalvar.style.display = 'none';
+        form.dataset.editing = 'false';
+        
+        // Restaurar valores originais se cancelar
+        restoreOriginalValues(form);
+    } else {
+        // Não está editando, habilitar edição
+        saveOriginalValues(form);
+        setFormReadonly(form, false);
+        btnEditar.innerHTML = '<i class="fas fa-times"></i> Cancelar';
+        btnSalvar.style.display = 'inline-block';
+        form.dataset.editing = 'true';
+    }
+}
+
+function setFormReadonly(form, readonly) {
+    const inputs = form.querySelectorAll('input, select, textarea');
+    inputs.forEach(input => {
+        if (readonly) {
+            input.setAttribute('readonly', 'readonly');
+            // NÃO usar disabled para não afetar o FormData, apenas visual
+            input.classList.add('readonly-field');
+            if (input.tagName === 'SELECT') {
+                input.style.pointerEvents = 'none';
+                input.setAttribute('tabindex', '-1');
+            }
+        } else {
+            input.removeAttribute('readonly');
+            input.classList.remove('readonly-field');
+            if (input.tagName === 'SELECT') {
+                input.style.pointerEvents = 'auto';
+                input.removeAttribute('tabindex');
+            }
+        }
+    });
+    
+    // Para checkboxes das especialidades - usar pointer-events em vez de disabled
+    const checkboxes = form.querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+        if (readonly) {
+            checkbox.style.pointerEvents = 'none';
+            checkbox.classList.add('readonly-field');
+            checkbox.setAttribute('tabindex', '-1');
+        } else {
+            checkbox.style.pointerEvents = 'auto';
+            checkbox.classList.remove('readonly-field');
+            checkbox.removeAttribute('tabindex');
+        }
+    });
+}
+
+function saveOriginalValues(form) {
+    const inputs = form.querySelectorAll('input, select, textarea');
+    inputs.forEach(input => {
+        if (input.type === 'checkbox') {
+            input.dataset.originalValue = input.checked;
+        } else {
+            input.dataset.originalValue = input.value;
+        }
+    });
+}
+
+function restoreOriginalValues(form) {
+    const inputs = form.querySelectorAll('input, select, textarea');
+    inputs.forEach(input => {
+        if (input.dataset.originalValue !== undefined) {
+            if (input.type === 'checkbox') {
+                input.checked = input.dataset.originalValue === 'true';
+            } else {
+                input.value = input.dataset.originalValue;
+            }
+        }
+    });
+}
+
+function enableEditModeAfterSave(formId, btnEditarId, btnSalvarId) {
+    const form = document.getElementById(formId);
+    const btnEditar = document.getElementById(btnEditarId);
+    const btnSalvar = document.getElementById(btnSalvarId);
+    
+    // Voltar ao modo readonly após salvar
+    setFormReadonly(form, true);
+    btnEditar.innerHTML = '<i class="fas fa-edit"></i> Editar';
+    btnEditar.style.display = 'inline-block';
+    btnSalvar.style.display = 'none';
+    form.dataset.editing = 'false';
+}
+
 // Upload de Avatar
 function abrirUploadAvatar() {
+    // Limpar estado anterior
+    avatarSelecionado = null;
+    tipoAvatar = null;
+    
+    // Limpar preview de imagem
+    const preview = document.getElementById('avatarPreview');
+    const placeholder = document.querySelector('.avatar-placeholder');
+    const fileInput = document.getElementById('avatarFile');
+    
+    preview.style.display = 'none';
+    preview.src = '';
+    placeholder.style.display = 'flex';
+    fileInput.value = '';
+    
+    // Limpar seleção de avatars padrão
+    document.querySelectorAll('.avatar-padrao').forEach(av => av.classList.remove('selecionado'));
+    
     document.getElementById('modalUploadAvatar').style.display = 'flex';
     document.body.style.overflow = 'hidden';
 }
@@ -1647,14 +1820,106 @@ function fecharModal(modalId) {
     document.body.style.overflow = 'auto';
 }
 
+let avatarSelecionado = null;
+let tipoAvatar = null; // 'upload' ou 'default'
+
 function selecionarAvatarPadrao(letra) {
     document.querySelectorAll('.avatar-padrao').forEach(av => av.classList.remove('selecionado'));
     event.target.classList.add('selecionado');
+    avatarSelecionado = letra;
+    tipoAvatar = 'default';
 }
 
 function salvarAvatar() {
-    mostrarAlerta('Avatar salvo com sucesso!', 'sucesso');
-    fecharModal('modalUploadAvatar');
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+    
+    // Detectar contexto (admin ou user)
+    const isAdminContext = window.location.pathname.includes('/admin/');
+    const baseUrl = isAdminContext ? '/admin/profile' : '/profile';
+    
+    if (tipoAvatar === 'upload') {
+        // Upload de arquivo
+        const fileInput = document.getElementById('avatarFile');
+        if (!fileInput.files[0]) {
+            mostrarAlerta('Selecione uma imagem primeiro', 'erro');
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('avatar', fileInput.files[0]);
+        
+        fetch(baseUrl + '/upload-avatar', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mostrarAlerta(data.message, 'sucesso');
+                // Atualizar avatar na tela
+                const avatarElement = document.getElementById('avatarAtual');
+                avatarElement.innerHTML = `<img src="${data.avatar_url}" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+                fecharModal('modalUploadAvatar');
+            } else {
+                mostrarAlerta(data.message, 'erro');
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            mostrarAlerta('Erro de conexão. Tente novamente.', 'erro');
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        });
+        
+    } else if (tipoAvatar === 'default' && avatarSelecionado) {
+        // Avatar padrão selecionado
+        const formData = new FormData();
+        formData.append('avatar_letter', avatarSelecionado);
+        
+        fetch(baseUrl + '/select-default-avatar', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mostrarAlerta(data.message, 'sucesso');
+                // Atualizar avatar na tela
+                const avatarElement = document.getElementById('avatarAtual');
+                avatarElement.innerHTML = data.avatar_letter;
+                fecharModal('modalUploadAvatar');
+            } else {
+                mostrarAlerta(data.message, 'erro');
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            mostrarAlerta('Erro de conexão. Tente novamente.', 'erro');
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        });
+        
+    } else {
+        mostrarAlerta('Selecione uma imagem ou avatar padrão', 'erro');
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
 }
 
 // Buscar CEP
@@ -1727,7 +1992,73 @@ function selecionarTemaUsuario(tema) {
 }
 
 function salvarPreferencias() {
-    mostrarAlerta('Preferências salvas com sucesso!', 'sucesso');
+    const formData = new FormData();
+    
+    // Capturar dados de idioma e região
+    const idioma = document.getElementById('idioma').value;
+    const fusoHorario = document.getElementById('fusoHorario').value;
+    const formatoData = document.getElementById('formatoData').value;
+    
+    // Capturar tema selecionado
+    const temaSelecionado = document.querySelector('.tema-opcao.ativa');
+    let tema = 'claro';
+    if (temaSelecionado) {
+        if (temaSelecionado.onclick.toString().includes('escuro')) tema = 'escuro';
+        else if (temaSelecionado.onclick.toString().includes('auto')) tema = 'auto';
+    }
+    
+    // Capturar notificações
+    const emailNotifications = document.querySelector('input[type="checkbox"]').checked;
+    const systemNotifications = document.querySelectorAll('input[type="checkbox"]')[1].checked;
+    const aiUpdates = document.querySelectorAll('input[type="checkbox"]')[2].checked;
+    const newsletter = document.querySelectorAll('input[type="checkbox"]')[3].checked;
+    
+    // Capturar configurações de interface
+    const interfaceCompacta = document.querySelectorAll('input[type="checkbox"]')[4].checked;
+    const animacoesReduzidas = document.querySelectorAll('input[type="checkbox"]')[5].checked;
+    
+    // Adicionar dados ao FormData
+    formData.append('idioma', idioma);
+    formData.append('fuso_horario', fusoHorario);
+    formData.append('formato_data', formatoData);
+    formData.append('tema', tema);
+    
+    if (emailNotifications) formData.append('email_notifications', '1');
+    if (systemNotifications) formData.append('system_notifications', '1');
+    if (aiUpdates) formData.append('ai_updates', '1');
+    if (newsletter) formData.append('newsletter', '1');
+    if (interfaceCompacta) formData.append('interface_compacta', '1');
+    if (animacoesReduzidas) formData.append('animacoes_reduzidas', '1');
+    
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+    
+    fetch(profileBase + '/save-preferences', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarAlerta(data.message, 'sucesso');
+        } else {
+            mostrarAlerta(data.message || 'Erro ao salvar preferências', 'erro');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarAlerta('Erro de conexão. Tente novamente.', 'erro');
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    });
 }
 
 // Atividade
@@ -1745,23 +2076,123 @@ function abrirModalExclusao() {
     }
 }
 
-// Formulários
-function resetarFormulario(formId) {
-    if (confirm('Deseja resetar todas as alterações?')) {
-        document.getElementById(formId).reset();
-        mostrarAlerta('Formulário resetado', 'info');
-    }
+// Inicialização da página
+document.addEventListener('DOMContentLoaded', function() {
+    // Deixar formulários em modo readonly por padrão
+    setFormReadonly(document.getElementById('formDadosPessoais'), true);
+    setFormReadonly(document.getElementById('formDadosProfissionais'), true);
+    
+    // Marcar especialidades secundárias já salvas
+    initializeSecondarySpecialties();
+});
+
+function initializeSecondarySpecialties() {
+    <?php if (!empty($userProfile['secondary_specialties_array'])): ?>
+    const savedSpecialties = <?= json_encode($userProfile['secondary_specialties_array']) ?>;
+    savedSpecialties.forEach(specialty => {
+        const checkbox = document.querySelector(`input[name="especialidades[]"][value="${specialty}"]`);
+        if (checkbox) {
+            checkbox.checked = true;
+        }
+    });
+    <?php endif; ?>
 }
+
+// Detectar se está no contexto admin
+const isAdminContext = window.location.pathname.includes('/admin/');
+const profileBase = isAdminContext ? '/admin/profile' : '/profile';
 
 // Submissão dos formulários
 document.getElementById('formDadosPessoais').addEventListener('submit', function(e) {
     e.preventDefault();
-    mostrarAlerta('Dados pessoais salvos com sucesso!', 'sucesso');
+    
+    // Verificar se está em modo de edição
+    if (this.dataset.editing !== 'true') {
+        mostrarAlerta('Clique em Editar primeiro para modificar os dados', 'aviso');
+        return;
+    }
+    
+    const formData = new FormData(this);
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    
+    // Debug: verificar se os dados estão sendo coletados
+    console.log('Dados do formulário:');
+    for (let pair of formData.entries()) {
+        console.log(pair[0] + ': ' + pair[1]);
+    }
+    
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+    
+    fetch(profileBase + '/save-personal-data', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarAlerta(data.message, 'sucesso');
+            // Voltar ao modo readonly após salvar
+            enableEditModeAfterSave('formDadosPessoais', 'btnEditarPessoais', 'btnSalvarPessoais');
+        } else {
+            mostrarAlerta(data.message || 'Erro ao salvar dados', 'erro');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarAlerta('Erro de conexão. Tente novamente.', 'erro');
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    });
 });
 
 document.getElementById('formDadosProfissionais').addEventListener('submit', function(e) {
     e.preventDefault();
-    mostrarAlerta('Dados profissionais salvos com sucesso!', 'sucesso');
+    
+    // Verificar se está em modo de edição
+    if (this.dataset.editing !== 'true') {
+        mostrarAlerta('Clique em Editar primeiro para modificar os dados', 'aviso');
+        return;
+    }
+    
+    const formData = new FormData(this);
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+    
+    fetch(profileBase + '/save-professional-data', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarAlerta(data.message, 'sucesso');
+            // Voltar ao modo readonly após salvar
+            enableEditModeAfterSave('formDadosProfissionais', 'btnEditarProfissionais', 'btnSalvarProfissionais');
+        } else {
+            mostrarAlerta(data.message || 'Erro ao salvar dados', 'erro');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarAlerta('Erro de conexão. Tente novamente.', 'erro');
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    });
 });
 
 document.getElementById('formAlterarSenha').addEventListener('submit', function(e) {
@@ -1781,8 +2212,37 @@ document.getElementById('formAlterarSenha').addEventListener('submit', function(
         return;
     }
     
-    mostrarAlerta('Senha alterada com sucesso!', 'sucesso');
-    this.reset();
+    const formData = new FormData(this);
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Alterando...';
+    
+    fetch(profileBase + '/change-password', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarAlerta(data.message, 'sucesso');
+            this.reset();
+        } else {
+            mostrarAlerta(data.message || 'Erro ao alterar senha', 'erro');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarAlerta('Erro de conexão. Tente novamente.', 'erro');
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    });
 });
 
 // Upload de arquivo
@@ -1795,6 +2255,20 @@ document.addEventListener('click', function(e) {
 document.getElementById('avatarFile').addEventListener('change', function(e) {
     const file = e.target.files[0];
     if (file) {
+        // Validar tipo de arquivo
+        if (!file.type.startsWith('image/')) {
+            mostrarAlerta('Selecione apenas arquivos de imagem', 'erro');
+            this.value = '';
+            return;
+        }
+        
+        // Validar tamanho (2MB)
+        if (file.size > 2 * 1024 * 1024) {
+            mostrarAlerta('Arquivo muito grande. Máximo 2MB.', 'erro');
+            this.value = '';
+            return;
+        }
+        
         const reader = new FileReader();
         reader.onload = function(e) {
             const preview = document.getElementById('avatarPreview');
@@ -1803,6 +2277,11 @@ document.getElementById('avatarFile').addEventListener('change', function(e) {
             preview.src = e.target.result;
             preview.style.display = 'block';
             placeholder.style.display = 'none';
+            
+            // Limpar seleção de avatar padrão
+            document.querySelectorAll('.avatar-padrao').forEach(av => av.classList.remove('selecionado'));
+            avatarSelecionado = null;
+            tipoAvatar = 'upload';
         };
         reader.readAsDataURL(file);
     }

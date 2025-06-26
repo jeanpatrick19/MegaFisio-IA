@@ -32,6 +32,12 @@ class Router {
             // Perfil do usuário
             'profile' => ['controller' => 'ProfileController', 'method' => 'index'],
             'profile/edit' => ['controller' => 'ProfileController', 'method' => 'edit'],
+            'profile/save-personal-data' => ['controller' => 'ProfileController', 'method' => 'savePersonalData'],
+            'profile/save-professional-data' => ['controller' => 'ProfileController', 'method' => 'saveProfessionalData'],
+            'profile/change-password' => ['controller' => 'ProfileController', 'method' => 'changePassword'],
+            'profile/save-preferences' => ['controller' => 'ProfileController', 'method' => 'savePreferences'],
+            'profile/upload-avatar' => ['controller' => 'ProfileController', 'method' => 'uploadAvatar'],
+            'profile/select-default-avatar' => ['controller' => 'ProfileController', 'method' => 'selectDefaultAvatar'],
             'profile/privacy' => ['controller' => 'ProfileController', 'method' => 'privacy'],
             'profile/export-data' => ['controller' => 'ProfileController', 'method' => 'exportData'],
             'profile/request-deletion' => ['controller' => 'ProfileController', 'method' => 'requestDeletion'],
@@ -56,12 +62,21 @@ class Router {
             // Admin - Perfil
             'admin/profile' => ['controller' => 'ProfileController', 'method' => 'index'],
             'admin/profile/edit' => ['controller' => 'ProfileController', 'method' => 'edit'],
+            'admin/profile/save-personal-data' => ['controller' => 'ProfileController', 'method' => 'savePersonalData'],
+            'admin/profile/save-professional-data' => ['controller' => 'ProfileController', 'method' => 'saveProfessionalData'],
+            'admin/profile/change-password' => ['controller' => 'ProfileController', 'method' => 'changePassword'],
+            'admin/profile/save-preferences' => ['controller' => 'ProfileController', 'method' => 'savePreferences'],
+            'admin/profile/upload-avatar' => ['controller' => 'ProfileController', 'method' => 'uploadAvatar'],
+            'admin/profile/select-default-avatar' => ['controller' => 'ProfileController', 'method' => 'selectDefaultAvatar'],
             'admin/profile/privacy' => ['controller' => 'ProfileController', 'method' => 'privacy'],
             'admin/profile/export-data' => ['controller' => 'ProfileController', 'method' => 'exportData'],
             'admin/profile/request-deletion' => ['controller' => 'ProfileController', 'method' => 'requestDeletion'],
             
             // Admin - Configurações
             'admin/settings' => ['controller' => 'SettingsController', 'method' => 'index'],
+            'admin/settings/save-logo-identity' => ['controller' => 'SettingsController', 'method' => 'saveLogoIdentity'],
+            'admin/settings/save-system-config' => ['controller' => 'SettingsController', 'method' => 'saveSystemConfig'],
+            'admin/settings/save-integration-email' => ['controller' => 'SettingsController', 'method' => 'saveIntegrationEmail'],
             
             // Admin - Logs
             'admin/logs' => ['controller' => 'LogsController', 'method' => 'index'],

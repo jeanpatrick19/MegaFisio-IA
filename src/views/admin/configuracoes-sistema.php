@@ -141,7 +141,7 @@
                     <p>Configure a identidade visual</p>
                 </div>
                 
-                <div class="logo-config">
+                <form id="formLogoIdentidade" class="logo-config">
                     <!-- Seção Logo -->
                     <div class="logo-secao-completa">
                         <h4>Logo do Sistema</h4>
@@ -160,7 +160,7 @@
                                     <p>Clique para enviar nova logo</p>
                                     <small>PNG, JPG até 2MB</small>
                                 </div>
-                                <input type="file" id="logoFile" style="display: none;" accept="image/*">
+                                <input type="file" id="logoFile" name="logo_file" style="display: none;" accept="image/*">
                             </div>
                         </div>
                     </div>
@@ -171,15 +171,26 @@
                         <div class="form-stack">
                             <div class="form-grupo">
                                 <label>Nome do Sistema</label>
-                                <input type="text" value="MegaFisio IA" id="nomeSistema">
+                                <input type="text" value="MegaFisio IA" id="nomeSistema" name="nome_sistema">
                             </div>
                             <div class="form-grupo">
                                 <label>Slogan</label>
-                                <input type="text" value="Inteligência para Fisioterapia" id="sloganSistema">
+                                <input type="text" value="Inteligência para Fisioterapia" id="sloganSistema" name="slogan_sistema">
                             </div>
                         </div>
                     </div>
-                </div>
+                    
+                    <div class="form-acoes">
+                        <button type="button" class="btn-fisio btn-secundario" id="btnEditarLogoIdentidade" onclick="toggleEditMode('formLogoIdentidade', 'btnEditarLogoIdentidade', 'btnSalvarLogoIdentidade')">
+                            <i class="fas fa-edit"></i>
+                            Editar
+                        </button>
+                        <button type="submit" class="btn-fisio btn-primario" id="btnSalvarLogoIdentidade" style="display: none;">
+                            <i class="fas fa-save"></i>
+                            Salvar Identidade
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
         
@@ -487,11 +498,11 @@
                     <p>Configurações básicas do sistema</p>
                 </div>
                 
-                <div class="config-form">
+                <form id="formConfigSistema" class="config-form">
                     <div class="form-grid">
                         <div class="form-grupo">
                             <label>Fuso Horário</label>
-                            <select>
+                            <select name="fuso_horario">
                                 <option value="America/Sao_Paulo" selected>América/São Paulo (UTC-3)</option>
                                 <option value="America/New_York">América/Nova York (UTC-5)</option>
                                 <option value="Europe/London">Europa/Londres (UTC+0)</option>
@@ -500,7 +511,7 @@
                         
                         <div class="form-grupo">
                             <label>Idioma do Sistema</label>
-                            <select>
+                            <select name="idioma_sistema">
                                 <option value="pt-BR" selected>Português (Brasil)</option>
                                 <option value="en-US">English (US)</option>
                                 <option value="es-ES">Español</option>
@@ -509,12 +520,12 @@
                         
                         <div class="form-grupo">
                             <label>Timeout de Sessão (minutos)</label>
-                            <input type="number" value="60" min="15" max="480">
+                            <input type="number" name="timeout_sessao" value="60" min="15" max="480">
                         </div>
                         
                         <div class="form-grupo">
                             <label>Máximo de tentativas de login</label>
-                            <input type="number" value="5" min="3" max="10">
+                            <input type="number" name="max_tentativas_login" value="5" min="3" max="10">
                         </div>
                     </div>
                     
@@ -522,7 +533,7 @@
                         <div class="switch-item">
                             <span>Registrar logs detalhados</span>
                             <label class="switch">
-                                <input type="checkbox" checked>
+                                <input type="checkbox" name="logs_detalhados" checked>
                                 <span class="slider"></span>
                             </label>
                         </div>
@@ -530,7 +541,7 @@
                         <div class="switch-item">
                             <span>Backup automático diário</span>
                             <label class="switch">
-                                <input type="checkbox" checked>
+                                <input type="checkbox" name="backup_automatico" checked>
                                 <span class="slider"></span>
                             </label>
                         </div>
@@ -538,12 +549,23 @@
                         <div class="switch-item">
                             <span>Modo de manutenção</span>
                             <label class="switch">
-                                <input type="checkbox">
+                                <input type="checkbox" name="modo_manutencao">
                                 <span class="slider"></span>
                             </label>
                         </div>
                     </div>
-                </div>
+                    
+                    <div class="form-acoes">
+                        <button type="button" class="btn-fisio btn-secundario" id="btnEditarConfigSistema" onclick="toggleEditMode('formConfigSistema', 'btnEditarConfigSistema', 'btnSalvarConfigSistema')">
+                            <i class="fas fa-edit"></i>
+                            Editar
+                        </button>
+                        <button type="submit" class="btn-fisio btn-primario" id="btnSalvarConfigSistema" style="display: none;">
+                            <i class="fas fa-save"></i>
+                            Salvar Sistema
+                        </button>
+                    </div>
+                </form>
             </div>
             
             <!-- Configurações de Segurança -->
@@ -656,37 +678,47 @@
                     <div class="integracao-status ativo">Conectado</div>
                 </div>
                 
-                <div class="integracao-config">
+                <form id="formIntegracaoEmail" class="integracao-config">
                     <div class="form-stack">
                         <div class="form-grupo">
                             <label>Servidor</label>
-                            <input type="text" value="smtp.gmail.com">
+                            <input type="text" name="smtp_servidor" value="smtp.gmail.com">
                         </div>
                         
                         <div class="form-grupo">
                             <label>Porta</label>
-                            <input type="number" value="587">
+                            <input type="number" name="smtp_porta" value="587">
                         </div>
                         
                         <div class="form-grupo">
                             <label>Email</label>
-                            <input type="email" value="noreply@megafisio.com.br">
+                            <input type="email" name="smtp_email" value="noreply@megafisio.com.br">
                         </div>
                         
                         <div class="form-grupo">
                             <label>Senha</label>
                             <div class="input-password">
-                                <input type="password" value="**********" id="emailPassword">
-                                <button onclick="togglePassword('emailPassword')"><i class="fas fa-eye"></i></button>
+                                <input type="password" name="smtp_senha" value="**********" id="emailPassword">
+                                <button type="button" onclick="togglePassword('emailPassword')"><i class="fas fa-eye"></i></button>
                             </div>
                         </div>
                     </div>
                     
-                    <button class="btn-fisio btn-secundario" onclick="testarIntegracao('email')">
-                        <i class="fas fa-paper-plane"></i>
-                        Enviar Teste
-                    </button>
-                </div>
+                    <div class="integracao-acoes">
+                        <button type="button" class="btn-fisio btn-secundario" onclick="testarIntegracao('email')">
+                            <i class="fas fa-paper-plane"></i>
+                            Enviar Teste
+                        </button>
+                        <button type="button" class="btn-fisio btn-secundario" id="btnEditarIntegracaoEmail" onclick="toggleEditMode('formIntegracaoEmail', 'btnEditarIntegracaoEmail', 'btnSalvarIntegracaoEmail')">
+                            <i class="fas fa-edit"></i>
+                            Editar
+                        </button>
+                        <button type="submit" class="btn-fisio btn-primario" id="btnSalvarIntegracaoEmail" style="display: none;">
+                            <i class="fas fa-save"></i>
+                            Salvar SMTP
+                        </button>
+                    </div>
+                </form>
             </div>
             
             <!-- Integração Storage -->
@@ -1524,6 +1556,49 @@ input:checked + .slider:before {
     padding: 12px 24px;
 }
 
+/* Campos readonly */
+.form-grupo input.readonly-field,
+.form-grupo select.readonly-field,
+.form-grupo textarea.readonly-field,
+.form-grupo input[readonly],
+.form-grupo textarea[readonly] {
+    background-color: #f8f9fa !important;
+    border-color: #e9ecef !important;
+    color: #6c757d !important;
+    cursor: not-allowed;
+}
+
+.form-grupo select.readonly-field {
+    pointer-events: none;
+    background-color: #f8f9fa !important;
+    border-color: #e9ecef !important;
+    color: #6c757d !important;
+}
+
+input[type="checkbox"].readonly-field,
+input[type="radio"].readonly-field {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* Botões em modo edição */
+.form-acoes {
+    display: flex;
+    gap: 16px;
+    justify-content: flex-end;
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--cinza-medio);
+}
+
+.integracao-acoes {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-start;
+    margin-top: 16px;
+    flex-wrap: wrap;
+}
+
 /* Responsivo */
 @media (max-width: 1024px) {
     .config-grid {
@@ -1660,6 +1735,106 @@ function salvarConfiguracoes(aba) {
     }, 1500);
 }
 
+// Sistema de Edição/Salvamento (copiado do perfil)
+function toggleEditMode(formId, btnEditarId, btnSalvarId) {
+    const form = document.getElementById(formId);
+    const btnEditar = document.getElementById(btnEditarId);
+    const btnSalvar = document.getElementById(btnSalvarId);
+    
+    const isEditing = form.dataset.editing === 'true';
+    
+    if (isEditing) {
+        // Está editando, cancelar edição
+        setFormReadonly(form, true);
+        btnEditar.innerHTML = '<i class="fas fa-edit"></i> Editar';
+        btnEditar.style.display = 'inline-block';
+        btnSalvar.style.display = 'none';
+        form.dataset.editing = 'false';
+        
+        // Restaurar valores originais se cancelar
+        restoreOriginalValues(form);
+    } else {
+        // Não está editando, habilitar edição
+        saveOriginalValues(form);
+        setFormReadonly(form, false);
+        btnEditar.innerHTML = '<i class="fas fa-times"></i> Cancelar';
+        btnSalvar.style.display = 'inline-block';
+        form.dataset.editing = 'true';
+    }
+}
+
+function setFormReadonly(form, readonly) {
+    const inputs = form.querySelectorAll('input, select, textarea');
+    inputs.forEach(input => {
+        if (readonly) {
+            input.setAttribute('readonly', 'readonly');
+            input.classList.add('readonly-field');
+            if (input.tagName === 'SELECT') {
+                input.style.pointerEvents = 'none';
+                input.setAttribute('tabindex', '-1');
+            }
+        } else {
+            input.removeAttribute('readonly');
+            input.classList.remove('readonly-field');
+            if (input.tagName === 'SELECT') {
+                input.style.pointerEvents = 'auto';
+                input.removeAttribute('tabindex');
+            }
+        }
+    });
+    
+    // Para checkboxes e radio buttons
+    const checkboxes = form.querySelectorAll('input[type="checkbox"], input[type="radio"]');
+    checkboxes.forEach(checkbox => {
+        if (readonly) {
+            checkbox.style.pointerEvents = 'none';
+            checkbox.classList.add('readonly-field');
+            checkbox.setAttribute('tabindex', '-1');
+        } else {
+            checkbox.style.pointerEvents = 'auto';
+            checkbox.classList.remove('readonly-field');
+            checkbox.removeAttribute('tabindex');
+        }
+    });
+}
+
+function saveOriginalValues(form) {
+    const inputs = form.querySelectorAll('input, select, textarea');
+    inputs.forEach(input => {
+        if (input.type === 'checkbox' || input.type === 'radio') {
+            input.dataset.originalValue = input.checked;
+        } else {
+            input.dataset.originalValue = input.value;
+        }
+    });
+}
+
+function restoreOriginalValues(form) {
+    const inputs = form.querySelectorAll('input, select, textarea');
+    inputs.forEach(input => {
+        if (input.dataset.originalValue !== undefined) {
+            if (input.type === 'checkbox' || input.type === 'radio') {
+                input.checked = input.dataset.originalValue === 'true';
+            } else {
+                input.value = input.dataset.originalValue;
+            }
+        }
+    });
+}
+
+function enableEditModeAfterSave(formId, btnEditarId, btnSalvarId) {
+    const form = document.getElementById(formId);
+    const btnEditar = document.getElementById(btnEditarId);
+    const btnSalvar = document.getElementById(btnSalvarId);
+    
+    // Voltar ao modo readonly após salvar
+    setFormReadonly(form, true);
+    btnEditar.innerHTML = '<i class="fas fa-edit"></i> Editar';
+    btnEditar.style.display = 'inline-block';
+    btnSalvar.style.display = 'none';
+    form.dataset.editing = 'false';
+}
+
 // Atualizar valores dos inputs de cor
 document.addEventListener('DOMContentLoaded', function() {
     const colorInputs = document.querySelectorAll('input[type="color"]');
@@ -1670,6 +1845,139 @@ document.addEventListener('DOMContentLoaded', function() {
         input.addEventListener('input', function() {
             span.textContent = this.value;
         });
+    });
+    
+    // Deixar formulários em modo readonly por padrão
+    const forms = ['formLogoIdentidade', 'formConfigSistema', 'formIntegracaoEmail'];
+    forms.forEach(formId => {
+        const form = document.getElementById(formId);
+        if (form) {
+            setFormReadonly(form, true);
+        }
+    });
+});
+
+// Event listeners para os formulários
+document.getElementById('formLogoIdentidade').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    if (this.dataset.editing !== 'true') {
+        mostrarAlerta('Clique em Editar primeiro para modificar os dados', 'aviso');
+        return;
+    }
+    
+    const formData = new FormData(this);
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+    
+    fetch('/admin/settings/save-logo-identity', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarAlerta(data.message, 'sucesso');
+            enableEditModeAfterSave('formLogoIdentidade', 'btnEditarLogoIdentidade', 'btnSalvarLogoIdentidade');
+        } else {
+            mostrarAlerta(data.message || 'Erro ao salvar dados', 'erro');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarAlerta('Erro de conexão. Tente novamente.', 'erro');
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    });
+});
+
+document.getElementById('formConfigSistema').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    if (this.dataset.editing !== 'true') {
+        mostrarAlerta('Clique em Editar primeiro para modificar os dados', 'aviso');
+        return;
+    }
+    
+    const formData = new FormData(this);
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+    
+    fetch('/admin/settings/save-system-config', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarAlerta(data.message, 'sucesso');
+            enableEditModeAfterSave('formConfigSistema', 'btnEditarConfigSistema', 'btnSalvarConfigSistema');
+        } else {
+            mostrarAlerta(data.message || 'Erro ao salvar dados', 'erro');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarAlerta('Erro de conexão. Tente novamente.', 'erro');
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    });
+});
+
+document.getElementById('formIntegracaoEmail').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    if (this.dataset.editing !== 'true') {
+        mostrarAlerta('Clique em Editar primeiro para modificar os dados', 'aviso');
+        return;
+    }
+    
+    const formData = new FormData(this);
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+    
+    fetch('/admin/settings/save-integration-email', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarAlerta(data.message, 'sucesso');
+            enableEditModeAfterSave('formIntegracaoEmail', 'btnEditarIntegracaoEmail', 'btnSalvarIntegracaoEmail');
+        } else {
+            mostrarAlerta(data.message || 'Erro ao salvar dados', 'erro');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarAlerta('Erro de conexão. Tente novamente.', 'erro');
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
     });
 });
 </script>

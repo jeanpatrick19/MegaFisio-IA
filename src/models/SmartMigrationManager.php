@@ -29,6 +29,207 @@ class SmartMigrationManager {
     }
     
     /**
+     * Método para garantir que uma tabela específica existe (chamado sob demanda)
+     */
+    public static function ensureTable($tableName) {
+        if (self::$instance === null) {
+            $db = Database::getInstance();
+            self::$instance = new self($db);
+        }
+        
+        // Definições COMPLETAS de todas as tabelas do sistema
+        $tableDefinitions = [
+            'user_profiles_extended' => [
+                'id' => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'user_id' => 'INT NOT NULL UNIQUE',
+                'phone' => 'VARCHAR(20) NULL',
+                'birth_date' => 'DATE NULL',
+                'gender' => "ENUM('masculino', 'feminino', 'outro', 'nao_informar') NULL",
+                'marital_status' => "ENUM('solteiro', 'casado', 'divorciado', 'viuvo', 'uniao_estavel') NULL",
+                'cep' => 'VARCHAR(10) NULL',
+                'address' => 'VARCHAR(255) NULL',
+                'number' => 'VARCHAR(20) NULL',
+                'complement' => 'VARCHAR(100) NULL',
+                'neighborhood' => 'VARCHAR(100) NULL',
+                'city' => 'VARCHAR(100) NULL',
+                'state' => 'VARCHAR(2) NULL',
+                'crefito' => 'VARCHAR(50) NULL',
+                'main_specialty' => 'VARCHAR(100) NULL',
+                'education' => 'VARCHAR(255) NULL',
+                'graduation_year' => 'YEAR NULL',
+                'experience_time' => 'VARCHAR(20) NULL',
+                'workplace' => 'VARCHAR(255) NULL',
+                'secondary_specialties' => 'JSON NULL',
+                'professional_bio' => 'TEXT NULL',
+                'language' => "VARCHAR(10) DEFAULT 'pt-BR'",
+                'timezone' => "VARCHAR(50) DEFAULT 'America/Sao_Paulo'",
+                'date_format' => "VARCHAR(20) DEFAULT 'dd/mm/yyyy'",
+                'theme' => "VARCHAR(20) DEFAULT 'claro'",
+                'compact_interface' => 'BOOLEAN DEFAULT FALSE',
+                'reduced_animations' => 'BOOLEAN DEFAULT FALSE',
+                'email_notifications' => 'BOOLEAN DEFAULT TRUE',
+                'system_notifications' => 'BOOLEAN DEFAULT TRUE',
+                'ai_updates' => 'BOOLEAN DEFAULT FALSE',
+                'newsletter' => 'BOOLEAN DEFAULT FALSE',
+                'two_factor_enabled' => 'BOOLEAN DEFAULT FALSE',
+                'two_factor_secret' => 'VARCHAR(32) NULL',
+                'avatar_type' => "ENUM('upload', 'default') DEFAULT 'default'",
+                'avatar_path' => 'VARCHAR(255) NULL',
+                'avatar_default' => 'VARCHAR(2) NULL',
+                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'updated_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'
+            ],
+            'system_settings' => [
+                'id' => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'category' => 'VARCHAR(50) NOT NULL',
+                'key' => 'VARCHAR(100) NOT NULL',
+                'value' => 'TEXT',
+                'type' => "ENUM('string', 'integer', 'boolean', 'json', 'color') DEFAULT 'string'",
+                'description' => 'TEXT',
+                'is_public' => 'BOOLEAN DEFAULT FALSE',
+                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'updated_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'
+            ],
+            'user_permissions' => [
+                'id' => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'user_id' => 'INT NOT NULL',
+                'permission' => 'VARCHAR(100) NOT NULL',
+                'granted_by' => 'INT NULL',
+                'granted_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'expires_at' => 'TIMESTAMP NULL'
+            ],
+            'login_attempts' => [
+                'id' => 'BIGINT AUTO_INCREMENT PRIMARY KEY',
+                'email' => 'VARCHAR(255) NOT NULL',
+                'ip_address' => 'VARCHAR(45) NOT NULL',
+                'user_agent' => 'TEXT',
+                'success' => 'BOOLEAN DEFAULT FALSE',
+                'attempted_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+            ],
+            'password_resets' => [
+                'id' => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'email' => 'VARCHAR(255) NOT NULL',
+                'token' => 'VARCHAR(255) NOT NULL',
+                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'expires_at' => 'TIMESTAMP NOT NULL',
+                'used_at' => 'TIMESTAMP NULL'
+            ],
+            'user_consents' => [
+                'id' => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'user_id' => 'INT NOT NULL',
+                'consent_type' => 'VARCHAR(50) NOT NULL',
+                'consent_text' => 'TEXT NOT NULL',
+                'consented' => 'BOOLEAN DEFAULT FALSE',
+                'consented_at' => 'TIMESTAMP NULL',
+                'ip_address' => 'VARCHAR(45)',
+                'user_agent' => 'TEXT'
+            ],
+            'data_processing_logs' => [
+                'id' => 'BIGINT AUTO_INCREMENT PRIMARY KEY',
+                'user_id' => 'INT NOT NULL',
+                'operation' => 'VARCHAR(50) NOT NULL',
+                'data_type' => 'VARCHAR(100) NOT NULL',
+                'description' => 'TEXT',
+                'legal_basis' => 'VARCHAR(100)',
+                'processed_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+            ],
+            'system_health' => [
+                'id' => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'metric_name' => 'VARCHAR(100) NOT NULL',
+                'metric_value' => 'DECIMAL(10,2) NOT NULL',
+                'status' => "ENUM('healthy', 'warning', 'critical') DEFAULT 'healthy'",
+                'recorded_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+            ],
+            'error_logs' => [
+                'id' => 'BIGINT AUTO_INCREMENT PRIMARY KEY',
+                'error_type' => 'VARCHAR(100) NOT NULL',
+                'error_message' => 'TEXT NOT NULL',
+                'stack_trace' => 'LONGTEXT',
+                'file_path' => 'VARCHAR(500)',
+                'line_number' => 'INT',
+                'user_id' => 'INT NULL',
+                'ip_address' => 'VARCHAR(45)',
+                'user_agent' => 'TEXT',
+                'occurred_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+            ],
+            'prompt_categories' => [
+                'id' => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'name' => 'VARCHAR(100) NOT NULL',
+                'description' => 'TEXT',
+                'icon' => 'VARCHAR(50)',
+                'color' => 'VARCHAR(7)',
+                'sort_order' => 'INT DEFAULT 0',
+                'is_active' => 'BOOLEAN DEFAULT TRUE',
+                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+            ],
+            'prompt_usage_stats' => [
+                'id' => 'BIGINT AUTO_INCREMENT PRIMARY KEY',
+                'prompt_id' => 'INT NOT NULL',
+                'user_id' => 'INT NOT NULL',
+                'usage_date' => 'DATE NOT NULL',
+                'usage_count' => 'INT DEFAULT 1',
+                'avg_response_time' => 'DECIMAL(10,3)',
+                'total_tokens_used' => 'INT DEFAULT 0'
+            ],
+            'ai_responses' => [
+                'id' => 'BIGINT AUTO_INCREMENT PRIMARY KEY',
+                'request_id' => 'BIGINT NOT NULL',
+                'response_text' => 'LONGTEXT NOT NULL',
+                'confidence_score' => 'DECIMAL(3,2)',
+                'tokens_used' => 'INT DEFAULT 0',
+                'response_time' => 'DECIMAL(10,3)',
+                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+            ],
+            'user_stats' => [
+                'id' => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'user_id' => 'INT NOT NULL UNIQUE',
+                'total_ai_requests' => 'INT DEFAULT 0',
+                'total_tokens_used' => 'BIGINT DEFAULT 0',
+                'avg_session_duration' => 'INT DEFAULT 0',
+                'last_activity' => 'TIMESTAMP NULL',
+                'favorite_prompts' => 'JSON',
+                'updated_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'
+            ],
+            'user_activities' => [
+                'id' => 'BIGINT AUTO_INCREMENT PRIMARY KEY',
+                'user_id' => 'INT NOT NULL',
+                'activity_type' => 'VARCHAR(50) NOT NULL',
+                'activity_description' => 'TEXT',
+                'entity_type' => 'VARCHAR(50)',
+                'entity_id' => 'INT',
+                'metadata' => 'JSON',
+                'ip_address' => 'VARCHAR(45)',
+                'user_agent' => 'TEXT',
+                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+            ],
+            'user_preferences' => [
+                'id' => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'user_id' => 'INT NOT NULL UNIQUE',
+                'dashboard_layout' => 'JSON',
+                'notification_settings' => 'JSON',
+                'ui_preferences' => 'JSON',
+                'ai_settings' => 'JSON',
+                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'updated_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'
+            ],
+            'system_config' => [
+                'id' => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'config_key' => 'VARCHAR(100) NOT NULL UNIQUE',
+                'config_value' => 'TEXT',
+                'config_type' => "ENUM('string', 'integer', 'boolean', 'json') DEFAULT 'string'",
+                'is_encrypted' => 'BOOLEAN DEFAULT FALSE',
+                'description' => 'TEXT',
+                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'updated_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'
+            ]
+        ];
+        
+        if (isset($tableDefinitions[$tableName])) {
+            self::$instance->ensureTableStructure($tableName, $tableDefinitions[$tableName]);
+        }
+    }
+    
+    /**
      * Método rápido para adicionar campo em qualquer tabela
      */
     public static function ensureColumn($tableName, $columnName, $definition) {
@@ -90,6 +291,22 @@ class SmartMigrationManager {
             $this->createUserLogsTable();
             $this->createUserSessionsActiveTable();
             $this->createPromptHistoryTable();
+            $this->createUserProfilesExtendedTable();
+            $this->createSystemSettingsTable();
+            $this->createUserPermissionsTable();
+            $this->createLoginAttemptsTable();
+            $this->createPasswordResetsTable();
+            $this->createUserConsentsTable();
+            $this->createDataProcessingLogsTable();
+            $this->createSystemHealthTable();
+            $this->createErrorLogsTable();
+            $this->createPromptCategoriesTable();
+            $this->createPromptUsageStatsTable();
+            $this->createAiResponsesTable();
+            $this->createUserStatsTable();
+            $this->createUserActivitiesTable();
+            $this->createUserPreferencesTable();
+            $this->createSystemConfigTable();
             $this->insertDefaultSettings();
             $this->insertDefaultAdmin();
             $this->insertDefaultPrompts();
@@ -381,6 +598,336 @@ class SmartMigrationManager {
         $this->addForeignKeyIfNotExists('prompt_history', 'fk_history_user', 'alterado_por', 'users', 'id', 'CASCADE');
     }
     
+    private function createUserProfilesExtendedTable() {
+        $sql = "CREATE TABLE IF NOT EXISTS user_profiles_extended (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL UNIQUE,
+            
+            -- Dados pessoais
+            phone VARCHAR(20) NULL COMMENT 'Telefone do usuário',
+            birth_date DATE NULL COMMENT 'Data de nascimento',
+            gender ENUM('masculino', 'feminino', 'outro', 'nao_informar') NULL COMMENT 'Gênero',
+            marital_status ENUM('solteiro', 'casado', 'divorciado', 'viuvo', 'uniao_estavel') NULL COMMENT 'Estado civil',
+            
+            -- Endereço
+            cep VARCHAR(10) NULL COMMENT 'CEP',
+            address VARCHAR(255) NULL COMMENT 'Endereço completo',
+            number VARCHAR(20) NULL COMMENT 'Número',
+            complement VARCHAR(100) NULL COMMENT 'Complemento',
+            neighborhood VARCHAR(100) NULL COMMENT 'Bairro',
+            city VARCHAR(100) NULL COMMENT 'Cidade',
+            state VARCHAR(2) NULL COMMENT 'Estado (UF)',
+            
+            -- Dados profissionais
+            crefito VARCHAR(50) NULL COMMENT 'Número do CREFITO',
+            main_specialty VARCHAR(100) NULL COMMENT 'Especialidade principal',
+            education VARCHAR(255) NULL COMMENT 'Formação acadêmica',
+            graduation_year YEAR NULL COMMENT 'Ano de formação',
+            experience_time VARCHAR(20) NULL COMMENT 'Tempo de experiência',
+            workplace VARCHAR(255) NULL COMMENT 'Local de trabalho',
+            secondary_specialties JSON NULL COMMENT 'Especialidades secundárias',
+            professional_bio TEXT NULL COMMENT 'Biografia profissional',
+            
+            -- Preferências
+            language VARCHAR(10) DEFAULT 'pt-BR' COMMENT 'Idioma preferido',
+            timezone VARCHAR(50) DEFAULT 'America/Sao_Paulo' COMMENT 'Fuso horário',
+            date_format VARCHAR(20) DEFAULT 'dd/mm/yyyy' COMMENT 'Formato de data',
+            theme VARCHAR(20) DEFAULT 'claro' COMMENT 'Tema da interface',
+            compact_interface BOOLEAN DEFAULT FALSE COMMENT 'Interface compacta',
+            reduced_animations BOOLEAN DEFAULT FALSE COMMENT 'Animações reduzidas',
+            
+            -- Notificações
+            email_notifications BOOLEAN DEFAULT TRUE COMMENT 'Notificações por email',
+            system_notifications BOOLEAN DEFAULT TRUE COMMENT 'Notificações do sistema',
+            ai_updates BOOLEAN DEFAULT FALSE COMMENT 'Atualizações de IA',
+            newsletter BOOLEAN DEFAULT FALSE COMMENT 'Newsletter mensal',
+            
+            -- Segurança
+            two_factor_enabled BOOLEAN DEFAULT FALSE COMMENT 'Autenticação de dois fatores',
+            two_factor_secret VARCHAR(32) NULL COMMENT 'Chave secreta 2FA',
+            
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            
+            INDEX idx_user_id (user_id),
+            INDEX idx_crefito (crefito),
+            INDEX idx_city_state (city, state)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        $this->db->query($sql);
+        $this->addForeignKeyIfNotExists('user_profiles_extended', 'fk_profile_user', 'user_id', 'users', 'id', 'CASCADE');
+    }
+    
+    private function createSystemSettingsTable() {
+        $sql = "CREATE TABLE IF NOT EXISTS system_settings (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            category VARCHAR(50) NOT NULL,
+            `key` VARCHAR(100) NOT NULL,
+            `value` TEXT,
+            `type` ENUM('string', 'integer', 'boolean', 'json', 'color') DEFAULT 'string',
+            description TEXT,
+            is_public BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_category_key (category, `key`),
+            INDEX idx_category (category),
+            INDEX idx_public (is_public)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        $this->db->query($sql);
+    }
+    
+    private function createUserPermissionsTable() {
+        $sql = "CREATE TABLE IF NOT EXISTS user_permissions (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            permission VARCHAR(100) NOT NULL,
+            granted_by INT NULL,
+            granted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            expires_at TIMESTAMP NULL,
+            INDEX idx_user_id (user_id),
+            INDEX idx_permission (permission),
+            UNIQUE KEY unique_user_permission (user_id, permission)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        $this->db->query($sql);
+        $this->addForeignKeyIfNotExists('user_permissions', 'fk_perm_user', 'user_id', 'users', 'id', 'CASCADE');
+        $this->addForeignKeyIfNotExists('user_permissions', 'fk_perm_granted_by', 'granted_by', 'users', 'id', 'SET NULL');
+    }
+    
+    private function createLoginAttemptsTable() {
+        $sql = "CREATE TABLE IF NOT EXISTS login_attempts (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            email VARCHAR(255) NOT NULL,
+            ip_address VARCHAR(45) NOT NULL,
+            user_agent TEXT,
+            success BOOLEAN DEFAULT FALSE,
+            attempted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_email (email),
+            INDEX idx_ip_address (ip_address),
+            INDEX idx_attempted_at (attempted_at),
+            INDEX idx_success (success)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        $this->db->query($sql);
+    }
+    
+    private function createPasswordResetsTable() {
+        $sql = "CREATE TABLE IF NOT EXISTS password_resets (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            email VARCHAR(255) NOT NULL,
+            token VARCHAR(255) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            expires_at TIMESTAMP NOT NULL,
+            used_at TIMESTAMP NULL,
+            INDEX idx_email (email),
+            INDEX idx_token (token),
+            INDEX idx_expires_at (expires_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        $this->db->query($sql);
+    }
+    
+    private function createUserConsentsTable() {
+        $sql = "CREATE TABLE IF NOT EXISTS user_consents (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            consent_type VARCHAR(50) NOT NULL,
+            consent_text TEXT NOT NULL,
+            consented BOOLEAN DEFAULT FALSE,
+            consented_at TIMESTAMP NULL,
+            ip_address VARCHAR(45),
+            user_agent TEXT,
+            INDEX idx_user_id (user_id),
+            INDEX idx_consent_type (consent_type)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        $this->db->query($sql);
+        $this->addForeignKeyIfNotExists('user_consents', 'fk_consent_user', 'user_id', 'users', 'id', 'CASCADE');
+    }
+    
+    private function createDataProcessingLogsTable() {
+        $sql = "CREATE TABLE IF NOT EXISTS data_processing_logs (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            operation VARCHAR(50) NOT NULL,
+            data_type VARCHAR(100) NOT NULL,
+            description TEXT,
+            legal_basis VARCHAR(100),
+            processed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_user_id (user_id),
+            INDEX idx_operation (operation),
+            INDEX idx_processed_at (processed_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        $this->db->query($sql);
+        $this->addForeignKeyIfNotExists('data_processing_logs', 'fk_dplog_user', 'user_id', 'users', 'id', 'CASCADE');
+    }
+    
+    private function createSystemHealthTable() {
+        $sql = "CREATE TABLE IF NOT EXISTS system_health (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            metric_name VARCHAR(100) NOT NULL,
+            metric_value DECIMAL(10,2) NOT NULL,
+            status ENUM('healthy', 'warning', 'critical') DEFAULT 'healthy',
+            recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_metric_name (metric_name),
+            INDEX idx_recorded_at (recorded_at),
+            INDEX idx_status (status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        $this->db->query($sql);
+    }
+    
+    private function createErrorLogsTable() {
+        $sql = "CREATE TABLE IF NOT EXISTS error_logs (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            error_type VARCHAR(100) NOT NULL,
+            error_message TEXT NOT NULL,
+            stack_trace LONGTEXT,
+            file_path VARCHAR(500),
+            line_number INT,
+            user_id INT NULL,
+            ip_address VARCHAR(45),
+            user_agent TEXT,
+            occurred_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_error_type (error_type),
+            INDEX idx_user_id (user_id),
+            INDEX idx_occurred_at (occurred_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        $this->db->query($sql);
+        $this->addForeignKeyIfNotExists('error_logs', 'fk_errlog_user', 'user_id', 'users', 'id', 'SET NULL');
+    }
+    
+    private function createPromptCategoriesTable() {
+        $sql = "CREATE TABLE IF NOT EXISTS prompt_categories (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(100) NOT NULL,
+            description TEXT,
+            icon VARCHAR(50),
+            color VARCHAR(7),
+            sort_order INT DEFAULT 0,
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_sort_order (sort_order),
+            INDEX idx_is_active (is_active)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        $this->db->query($sql);
+    }
+    
+    private function createPromptUsageStatsTable() {
+        $sql = "CREATE TABLE IF NOT EXISTS prompt_usage_stats (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            prompt_id INT NOT NULL,
+            user_id INT NOT NULL,
+            usage_date DATE NOT NULL,
+            usage_count INT DEFAULT 1,
+            avg_response_time DECIMAL(10,3),
+            total_tokens_used INT DEFAULT 0,
+            INDEX idx_prompt_id (prompt_id),
+            INDEX idx_user_id (user_id),
+            INDEX idx_usage_date (usage_date),
+            UNIQUE KEY unique_prompt_user_date (prompt_id, user_id, usage_date)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        $this->db->query($sql);
+        $this->addForeignKeyIfNotExists('prompt_usage_stats', 'fk_usage_prompt', 'prompt_id', 'ai_prompts', 'id', 'CASCADE');
+        $this->addForeignKeyIfNotExists('prompt_usage_stats', 'fk_usage_user', 'user_id', 'users', 'id', 'CASCADE');
+    }
+    
+    private function createAiResponsesTable() {
+        $sql = "CREATE TABLE IF NOT EXISTS ai_responses (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            request_id BIGINT NOT NULL,
+            response_text LONGTEXT NOT NULL,
+            confidence_score DECIMAL(3,2),
+            tokens_used INT DEFAULT 0,
+            response_time DECIMAL(10,3),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_request_id (request_id),
+            INDEX idx_created_at (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        $this->db->query($sql);
+        $this->addForeignKeyIfNotExists('ai_responses', 'fk_response_request', 'request_id', 'ai_requests', 'id', 'CASCADE');
+    }
+    
+    private function createUserStatsTable() {
+        $sql = "CREATE TABLE IF NOT EXISTS user_stats (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL UNIQUE,
+            total_ai_requests INT DEFAULT 0,
+            total_tokens_used BIGINT DEFAULT 0,
+            avg_session_duration INT DEFAULT 0,
+            last_activity TIMESTAMP NULL,
+            favorite_prompts JSON,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_user_id (user_id),
+            INDEX idx_last_activity (last_activity)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        $this->db->query($sql);
+        $this->addForeignKeyIfNotExists('user_stats', 'fk_stats_user', 'user_id', 'users', 'id', 'CASCADE');
+    }
+    
+    private function createUserActivitiesTable() {
+        $sql = "CREATE TABLE IF NOT EXISTS user_activities (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            activity_type VARCHAR(50) NOT NULL,
+            activity_description TEXT,
+            entity_type VARCHAR(50),
+            entity_id INT,
+            metadata JSON,
+            ip_address VARCHAR(45),
+            user_agent TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_user_id (user_id),
+            INDEX idx_activity_type (activity_type),
+            INDEX idx_created_at (created_at),
+            INDEX idx_entity (entity_type, entity_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        $this->db->query($sql);
+        $this->addForeignKeyIfNotExists('user_activities', 'fk_activity_user', 'user_id', 'users', 'id', 'CASCADE');
+    }
+    
+    private function createUserPreferencesTable() {
+        $sql = "CREATE TABLE IF NOT EXISTS user_preferences (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL UNIQUE,
+            dashboard_layout JSON,
+            notification_settings JSON,
+            ui_preferences JSON,
+            ai_settings JSON,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_user_id (user_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        $this->db->query($sql);
+        $this->addForeignKeyIfNotExists('user_preferences', 'fk_prefs_user', 'user_id', 'users', 'id', 'CASCADE');
+    }
+    
+    private function createSystemConfigTable() {
+        $sql = "CREATE TABLE IF NOT EXISTS system_config (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            config_key VARCHAR(100) NOT NULL UNIQUE,
+            config_value TEXT,
+            config_type ENUM('string', 'integer', 'boolean', 'json') DEFAULT 'string',
+            is_encrypted BOOLEAN DEFAULT FALSE,
+            description TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_config_key (config_key),
+            INDEX idx_config_type (config_type)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        $this->db->query($sql);
+    }
+    
     
     private function createIndexIfNotExists($table, $indexName, $columns) {
         try {
@@ -630,6 +1177,43 @@ Seja preciso e baseie-se nas diretrizes oficiais da CID-10.',
                 'description' => 'TEXT',
                 'type' => "ENUM('string', 'integer', 'boolean', 'json') DEFAULT 'string'",
                 'is_public' => 'BOOLEAN DEFAULT FALSE',
+                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'updated_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'
+            ],
+            'user_profiles_extended' => [
+                'id' => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'user_id' => 'INT NOT NULL UNIQUE',
+                'phone' => 'VARCHAR(20) NULL',
+                'birth_date' => 'DATE NULL',
+                'gender' => "ENUM('masculino', 'feminino', 'outro', 'nao_informar') NULL",
+                'marital_status' => "ENUM('solteiro', 'casado', 'divorciado', 'viuvo', 'uniao_estavel') NULL",
+                'cep' => 'VARCHAR(10) NULL',
+                'address' => 'VARCHAR(255) NULL',
+                'number' => 'VARCHAR(20) NULL',
+                'complement' => 'VARCHAR(100) NULL',
+                'neighborhood' => 'VARCHAR(100) NULL',
+                'city' => 'VARCHAR(100) NULL',
+                'state' => 'VARCHAR(2) NULL',
+                'crefito' => 'VARCHAR(50) NULL',
+                'main_specialty' => 'VARCHAR(100) NULL',
+                'education' => 'VARCHAR(255) NULL',
+                'graduation_year' => 'YEAR NULL',
+                'experience_time' => 'VARCHAR(20) NULL',
+                'workplace' => 'VARCHAR(255) NULL',
+                'secondary_specialties' => 'JSON NULL',
+                'professional_bio' => 'TEXT NULL',
+                'language' => "VARCHAR(10) DEFAULT 'pt-BR'",
+                'timezone' => "VARCHAR(50) DEFAULT 'America/Sao_Paulo'",
+                'date_format' => "VARCHAR(20) DEFAULT 'dd/mm/yyyy'",
+                'theme' => "VARCHAR(20) DEFAULT 'claro'",
+                'compact_interface' => 'BOOLEAN DEFAULT FALSE',
+                'reduced_animations' => 'BOOLEAN DEFAULT FALSE',
+                'email_notifications' => 'BOOLEAN DEFAULT TRUE',
+                'system_notifications' => 'BOOLEAN DEFAULT TRUE',
+                'ai_updates' => 'BOOLEAN DEFAULT FALSE',
+                'newsletter' => 'BOOLEAN DEFAULT FALSE',
+                'two_factor_enabled' => 'BOOLEAN DEFAULT FALSE',
+                'two_factor_secret' => 'VARCHAR(32) NULL',
                 'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
                 'updated_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'
             ]

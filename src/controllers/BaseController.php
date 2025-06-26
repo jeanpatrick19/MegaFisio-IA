@@ -15,10 +15,16 @@ abstract class BaseController {
     
     protected function checkAuth() {
         if (isset($_SESSION['user_id'])) {
+            // Garantir que a tabela user_profiles_extended existe
+            require_once SRC_PATH . '/models/SmartMigrationManager.php';
+            SmartMigrationManager::ensureTable('user_profiles_extended');
+            
             $stmt = $this->db->prepare("
-                SELECT id, email, name, role, status 
-                FROM users 
-                WHERE id = ? AND status = 'active'
+                SELECT u.id, u.email, u.name, u.role, u.status, 
+                       p.avatar_type, p.avatar_path, p.avatar_default
+                FROM users u 
+                LEFT JOIN user_profiles_extended p ON u.id = p.user_id
+                WHERE u.id = ? AND u.status = 'active'
             ");
             $stmt->execute([$_SESSION['user_id']]);
             $this->user = $stmt->fetch();
@@ -47,6 +53,31 @@ abstract class BaseController {
         }
     }
     
+    protected function getUserAvatarHtml($size = 'medium') {
+        if (!$this->user) {
+            return '';
+        }
+        
+        $sizes = [
+            'small' => '32px',
+            'medium' => '40px', 
+            'large' => '48px'
+        ];
+        
+        $avatarSize = $sizes[$size] ?? $sizes['medium'];
+        
+        $style = "width: {$avatarSize}; height: {$avatarSize}; border-radius: 50%; object-fit: cover; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: " . (intval($avatarSize) * 0.4) . "px;";
+        
+        if (!empty($this->user['avatar_path']) && $this->user['avatar_type'] === 'upload') {
+            return "<img src=\"" . htmlspecialchars($this->user['avatar_path']) . "\" alt=\"Avatar\" style=\"{$style}\">";
+        } elseif (!empty($this->user['avatar_default']) && $this->user['avatar_type'] === 'default') {
+            return "<div style=\"{$style} background: var(--gradiente-principal); color: white;\">" . htmlspecialchars($this->user['avatar_default']) . "</div>";
+        } else {
+            $initials = strtoupper(substr($this->user['name'] ?? 'U', 0, 2));
+            return "<div style=\"{$style} background: var(--gradiente-principal); color: white;\">{$initials}</div>";
+        }
+    }
+
     protected function render($view, $data = [], $layout = null) {
         extract($data);
         $user = $this->user;

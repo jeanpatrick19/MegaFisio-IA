@@ -34,6 +34,9 @@ class Database {
             ];
             
             $this->connection = new PDO($dsn, $this->username, $this->password, $options);
+            
+            // Executar migração automática
+            $this->runAutoMigration();
         } catch (PDOException $e) {
             die("Erro ao verificar/criar banco de dados: " . $e->getMessage() . 
                 "<br>Tentando conectar com: {$this->username}/{$this->password}");
@@ -73,5 +76,111 @@ class Database {
     
     public function rollBack() {
         return $this->connection->rollBack();
+    }
+    
+    public function exec($sql) {
+        return $this->connection->exec($sql);
+    }
+    
+    private function runAutoMigration() {
+        try {
+            // Verificar se as tabelas essenciais existem
+            if (!$this->needsMigration()) {
+                return; // Tudo OK, não precisa migrar
+            }
+            
+            // Verificar lock para evitar execução simultânea
+            $lockFile = sys_get_temp_dir() . '/megafisio_migration.lock';
+            if (file_exists($lockFile) && (time() - filemtime($lockFile)) < 300) {
+                return;
+            }
+            
+            // Criar lock
+            file_put_contents($lockFile, date('Y-m-d H:i:s'));
+            
+            // Incluir o SmartMigrationManager
+            require_once __DIR__ . '/../src/models/SmartMigrationManager.php';
+            
+            // Executar migração
+            $migrationManager = new SmartMigrationManager($this);
+            $migrationManager->createAllTables();
+            
+            // Remover lock
+            if (file_exists($lockFile)) {
+                unlink($lockFile);
+            }
+            
+        } catch (Exception $e) {
+            // Em caso de erro, remover lock e continuar
+            if (file_exists($lockFile)) {
+                unlink($lockFile);
+            }
+            error_log("Erro na migração automática: " . $e->getMessage());
+        }
+    }
+    
+    private function needsMigration() {
+        try {
+            // Lista das tabelas essenciais que sempre devem existir
+            $essentialTables = [
+                'users', 
+                'user_profiles_extended', 
+                'settings', 
+                'ai_prompts', 
+                'ai_requests',
+                'user_logs',
+                'system_settings',
+                'user_permissions',
+                'login_attempts',
+                'password_resets',
+                'user_consents',
+                'system_health',
+                'error_logs',
+                'user_stats',
+                'user_activities',
+                'user_preferences',
+                'system_config'
+            ];
+            
+            foreach ($essentialTables as $table) {
+                $stmt = $this->connection->prepare("
+                    SELECT COUNT(*) 
+                    FROM INFORMATION_SCHEMA.TABLES 
+                    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?
+                ");
+                $stmt->execute([$table]);
+                
+                if ($stmt->fetchColumn() == 0) {
+                    return true; // Tabela não existe, precisa migrar
+                }
+            }
+            
+            // Verificar se a tabela user_profiles_extended tem todos os campos necessários
+            $requiredColumns = [
+                'phone', 'birth_date', 'gender', 'crefito', 'main_specialty', 
+                'theme', 'language', 'email_notifications'
+            ];
+            
+            foreach ($requiredColumns as $column) {
+                $stmt = $this->connection->prepare("
+                    SELECT COUNT(*) 
+                    FROM INFORMATION_SCHEMA.COLUMNS 
+                    WHERE TABLE_SCHEMA = DATABASE() 
+                    AND TABLE_NAME = 'user_profiles_extended' 
+                    AND COLUMN_NAME = ?
+                ");
+                $stmt->execute([$column]);
+                
+                if ($stmt->fetchColumn() == 0) {
+                    return true; // Campo não existe, precisa migrar
+                }
+            }
+            
+            return false; // Tudo OK
+            
+        } catch (Exception $e) {
+            // Em caso de erro, assumir que precisa migrar
+            return true;
+        }
     }
 }
