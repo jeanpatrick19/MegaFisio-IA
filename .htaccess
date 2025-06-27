@@ -1,26 +1,65 @@
+# ========================================
+# MegaFisio IA - Configuração Principal
+# ========================================
+
 # Proteger arquivos PHP fora da pasta public
 <FilesMatch "\.(php|inc|tpl|sql)$">
-    Order deny,allow
-    Deny from all
+    <RequireAll>
+        Require all denied
+    </RequireAll>
 </FilesMatch>
 
 # Desabilitar listagem de diretórios
 Options -Indexes
 
 # Proteger arquivos sensíveis
-<FilesMatch "(\.htaccess|\.htpasswd|\.env|composer\.(json|lock)|package\.(json|lock))$">
-    Order deny,allow
-    Deny from all
+<FilesMatch "(\.htaccess|\.htpasswd|\.env|composer\.(json|lock)|package\.(json|lock)|DEPLOY\.md)$">
+    <RequireAll>
+        Require all denied
+    </RequireAll>
 </FilesMatch>
 
-RewriteEngine On
+# Habilitar mod_rewrite
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Arquivos especiais na raiz (permitir acesso direto se existirem)
+    RewriteRule ^install\.php$ - [L]
+    RewriteRule ^reset_data\.php$ - [L]
+    
+    # Redirecionar todas as outras requisições para public/
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ public/index.php?route=$1 [QSA,L]
+</IfModule>
 
-# Arquivos especiais na raiz (permitir acesso direto)
-RewriteRule ^install\.php$ - [L]
-RewriteRule ^reset_data\.php$ - [L]
+# Fallback caso mod_rewrite não esteja disponível
+<IfModule !mod_rewrite.c>
+    # Redirecionar tudo para public/ usando ErrorDocument
+    ErrorDocument 404 /public/index.php
+</IfModule>
 
-# Redirecionar todas as outras requisições para public/
-RewriteCond %{REQUEST_URI} !^/public/
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^(.*)$ public/index.php?route=$1 [QSA,L]
+# Configurações de segurança adicionais
+<IfModule mod_headers.c>
+    # Prevenir clickjacking
+    Header always append X-Frame-Options SAMEORIGIN
+    
+    # Prevenir MIME type sniffing
+    Header always set X-Content-Type-Options nosniff
+    
+    # XSS Protection
+    Header always set X-XSS-Protection "1; mode=block"
+</IfModule>
+
+# Configurações de cache para arquivos estáticos
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/jpg "access plus 1 year"
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/gif "access plus 1 year"
+    ExpiresByType image/svg+xml "access plus 1 year"
+</IfModule>

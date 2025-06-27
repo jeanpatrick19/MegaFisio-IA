@@ -1,8 +1,8 @@
 <?php if (!defined('PUBLIC_ACCESS')) die('Acesso negado'); ?>
 
 <!-- Título da Página -->
-<h1 class="titulo-pagina">Assistente IA para Fisioterapia</h1>
-<p class="subtitulo-pagina-escuro">Inteligência artificial especializada para auxiliar no diagnóstico e tratamento fisioterapêutico</p>
+<h1 class="titulo-pagina">🤖 Dr. IA - Assistentes Especializados</h1>
+<p class="subtitulo-pagina-escuro">23 robôs especialistas em fisioterapia, gestão clínica e marketing para impulsionar sua prática profissional</p>
 
 <!-- Estatísticas do Usuário -->
 <div class="user-stats-ai">
@@ -54,39 +54,55 @@
         <div class="card-fisio">
             <div class="card-header-fisio">
                 <div class="card-titulo">
-                    <i class="fas fa-stethoscope"></i>
-                    <span>Escolha a Especialidade</span>
+                    <i class="fas fa-robot"></i>
+                    <span>Escolha seu Dr. IA</span>
                 </div>
             </div>
             
             <div class="lista-especialidades">
-                <?php if (!empty($aiPrompts)): ?>
-                    <?php foreach ($aiPrompts as $prompt): ?>
-                        <button class="btn-especialidade <?= ($selectedPrompt && $selectedPrompt['id'] == $prompt['id']) ? 'ativo' : '' ?>" 
-                                data-prompt-id="<?= $prompt['id'] ?>"
-                                data-prompt-name="<?= htmlspecialchars($prompt['name']) ?>"
-                                onclick="selecionarEspecialidade(this)">
-                            <div class="especialidade-icone">
-                                <?php
-                                // Ícones por especialidade
-                                $icones = [
-                                    'ortopedica' => 'fa-bone',
-                                    'neurologica' => 'fa-brain',
-                                    'respiratoria' => 'fa-lungs',
-                                    'geriatrica' => 'fa-user-clock',
-                                    'pediatrica' => 'fa-baby'
-                                ];
-                                $icone = $icones[$prompt['slug']] ?? 'fa-stethoscope';
-                                ?>
-                                <i class="fas <?= $icone ?>"></i>
-                            </div>
-                            <div class="especialidade-info">
-                                <h4><?= htmlspecialchars($prompt['name']) ?></h4>
-                                <p><?= htmlspecialchars($prompt['description']) ?></p>
-                            </div>
-                        </button>
-                    <?php endforeach; ?>
-                <?php endif; ?>
+                <?php
+                // 23 Robôs Dr. IA
+                $robotsIA = [
+                    ['name' => 'Dr. Autoritas', 'description' => 'Conteúdo para Instagram', 'icon' => 'fa-instagram', 'slug' => 'dr_autoritas'],
+                    ['name' => 'Dr. Acolhe', 'description' => 'Atendimento via WhatsApp/Direct', 'icon' => 'fa-whatsapp', 'slug' => 'dr_acolhe'],
+                    ['name' => 'Dr. Fechador', 'description' => 'Vendas de Planos Fisioterapêuticos', 'icon' => 'fa-handshake', 'slug' => 'dr_fechador'],
+                    ['name' => 'Dr. Reab', 'description' => 'Prescrição de Exercícios Personalizados', 'icon' => 'fa-dumbbell', 'slug' => 'dr_reab'],
+                    ['name' => 'Dra. Protoc', 'description' => 'Protocolos Terapêuticos Estruturados', 'icon' => 'fa-clipboard-list', 'slug' => 'dra_protoc'],
+                    ['name' => 'Dra. Edu', 'description' => 'Materiais Educativos para Pacientes', 'icon' => 'fa-graduation-cap', 'slug' => 'dra_edu'],
+                    ['name' => 'Dr. Científico', 'description' => 'Resumos de Artigos e Evidências', 'icon' => 'fa-microscope', 'slug' => 'dr_cientifico'],
+                    ['name' => 'Dr. Injetáveis', 'description' => 'Protocolos Terapêuticos com Injetáveis', 'icon' => 'fa-syringe', 'slug' => 'dr_injetaveis'],
+                    ['name' => 'Dr. Local', 'description' => 'Autoridade de Bairro', 'icon' => 'fa-map-marker-alt', 'slug' => 'dr_local'],
+                    ['name' => 'Dr. Recall', 'description' => 'Fidelização e Retorno de Pacientes', 'icon' => 'fa-undo', 'slug' => 'dr_recall'],
+                    ['name' => 'Dr. Evolucio', 'description' => 'Acompanhamento Clínico do Paciente', 'icon' => 'fa-chart-line', 'slug' => 'dr_evolucio'],
+                    ['name' => 'Dra. Legal', 'description' => 'Termos de Consentimento Personalizados', 'icon' => 'fa-gavel', 'slug' => 'dra_legal'],
+                    ['name' => 'Dr. Contratus', 'description' => 'Contratos de Prestação de Serviço', 'icon' => 'fa-file-contract', 'slug' => 'dr_contratus'],
+                    ['name' => 'Dr. Imago', 'description' => 'Autorização de Uso de Imagem', 'icon' => 'fa-camera', 'slug' => 'dr_imago'],
+                    ['name' => 'Dr. Imaginário', 'description' => 'Análise de Exames de Imagem (RX, USG, RNM)', 'icon' => 'fa-x-ray', 'slug' => 'dr_imaginario'],
+                    ['name' => 'Dr. Diagnostik', 'description' => 'Mapeamento de Marcadores para Fisioterapia', 'icon' => 'fa-search-plus', 'slug' => 'dr_diagnostik'],
+                    ['name' => 'Dr. Integralis', 'description' => 'Análise Funcional de Exames Laboratoriais', 'icon' => 'fa-flask', 'slug' => 'dr_integralis'],
+                    ['name' => 'Dr. POP', 'description' => 'Protocolos Operacionais Padrão (para pasta sanitária)', 'icon' => 'fa-folder-open', 'slug' => 'dr_pop'],
+                    ['name' => 'Dr. Vigilantis', 'description' => 'Documentação e Exigências da Vigilância Sanitária', 'icon' => 'fa-shield-alt', 'slug' => 'dr_vigilantis'],
+                    ['name' => 'Dr. Fórmula Oral', 'description' => 'Propostas Farmacológicas Via Oral para Dor', 'icon' => 'fa-pills', 'slug' => 'dr_formula_oral'],
+                    ['name' => 'Dra. Contrology', 'description' => 'Especialista em prescrição de Pilates clássico terapêutico', 'icon' => 'fa-yoga', 'slug' => 'dra_contrology'],
+                    ['name' => 'Dr. Posturalis', 'description' => 'Especialista em RPG de Souchard e análise postural', 'icon' => 'fa-user-check', 'slug' => 'dr_posturalis'],
+                    ['name' => 'Dr. Peritus', 'description' => 'Mestre das Perícias', 'icon' => 'fa-balance-scale', 'slug' => 'dr_peritus']
+                ];
+                ?>
+                
+                <?php foreach ($robotsIA as $robot): ?>
+                    <button class="btn-especialidade" 
+                            data-robot-slug="<?= $robot['slug'] ?>"
+                            data-robot-name="<?= htmlspecialchars($robot['name']) ?>"
+                            onclick="selecionarRobotIA(this)">
+                        <div class="especialidade-icone">
+                            <i class="fas <?= $robot['icon'] ?>"></i>
+                        </div>
+                        <div class="especialidade-info">
+                            <h4><?= htmlspecialchars($robot['name']) ?></h4>
+                            <p><?= htmlspecialchars($robot['description']) ?></p>
+                        </div>
+                    </button>
+                <?php endforeach; ?>
             </div>
         </div>
         
@@ -914,7 +930,7 @@
 // Variáveis globais
 let promptSelecionado = null;
 
-// Selecionar especialidade
+// Selecionar especialidade (função original mantida para compatibilidade)
 function selecionarEspecialidade(btn) {
     // Remover ativo de todos
     document.querySelectorAll('.btn-especialidade').forEach(b => b.classList.remove('ativo'));
@@ -935,6 +951,67 @@ function selecionarEspecialidade(btn) {
     const badge = document.getElementById('especialidadeSelecionada');
     badge.querySelector('span').textContent = promptSelecionado.name;
     badge.style.display = 'flex';
+}
+
+// Selecionar robô IA (nova função para os 23 robôs)
+function selecionarRobotIA(btn) {
+    // Remover ativo de todos
+    document.querySelectorAll('.btn-especialidade').forEach(b => b.classList.remove('ativo'));
+    
+    // Adicionar ativo no selecionado
+    btn.classList.add('ativo');
+    
+    // Atualizar dados
+    promptSelecionado = {
+        slug: btn.dataset.robotSlug,
+        name: btn.dataset.robotName
+    };
+    
+    // Atualizar input hidden com o slug do robô
+    document.getElementById('promptId').value = promptSelecionado.slug;
+    
+    // Mostrar badge
+    const badge = document.getElementById('especialidadeSelecionada');
+    badge.querySelector('span').textContent = promptSelecionado.name;
+    badge.style.display = 'flex';
+    
+    // Adaptar formulário baseado no robô selecionado
+    adaptarFormularioParaRobot(promptSelecionado.slug);
+}
+
+// Adaptar formulário baseado no tipo de robô
+function adaptarFormularioParaRobot(robotSlug) {
+    // Adaptar labels e placeholders baseado no robô
+    const adaptacoes = {
+        'dr_autoritas': {
+            titulo: 'Conteúdo para Instagram',
+            placeholder: 'Descreva o tipo de conteúdo que deseja criar para Instagram...'
+        },
+        'dr_acolhe': {
+            titulo: 'Atendimento ao Cliente',
+            placeholder: 'Descreva a situação do atendimento via WhatsApp/Direct...'
+        },
+        'dr_fechador': {
+            titulo: 'Vendas de Planos',
+            placeholder: 'Descreva o perfil do cliente e o plano a ser oferecido...'
+        },
+        'dr_reab': {
+            titulo: 'Prescrição de Exercícios',
+            placeholder: 'Descreva a condição clínica e necessidades do paciente...'
+        }
+        // Adicionar mais adaptações conforme necessário
+    };
+    
+    const adaptacao = adaptacoes[robotSlug] || {
+        titulo: 'Solicitação para IA',
+        placeholder: 'Descreva sua solicitação...'
+    };
+    
+    // Atualizar placeholder do campo de solicitação
+    const campoSolicitacao = document.getElementById('solicitacao');
+    if (campoSolicitacao) {
+        campoSolicitacao.placeholder = adaptacao.placeholder;
+    }
 }
 
 // Preencher solicitação rápida

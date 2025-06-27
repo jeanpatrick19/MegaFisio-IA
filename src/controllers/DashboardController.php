@@ -16,6 +16,7 @@ class DashboardController extends BaseController {
                 $this->adminDashboard();
                 break;
             case 'professional':
+            case 'usuario': // Compatibilidade com role antigo
                 $this->professionalDashboard();
                 break;
             case 'patient':
@@ -27,25 +28,41 @@ class DashboardController extends BaseController {
     }
     
     private function adminDashboard() {
-        // Estatísticas do sistema
+        // Estatísticas reais do sistema
         $stats = [
+            // Usuários
             'total_users' => $this->getTotalUsers(),
+            'admins' => $this->getUsersByRole('admin'),
+            'fisioterapeutas' => $this->getUsersByRole('professional'),
             'active_sessions' => $this->getActiveSessions(),
+            'users_growth' => $this->getUsersGrowth(),
+            
+            // IA e Robôs Dr. IA
+            'total_robots' => $this->getTotalRobots(),
+            'active_robots' => $this->getActiveRobots(),
             'ai_requests_today' => $this->getAIRequestsToday(),
+            'ai_requests_total' => $this->getAIRequestsTotal(),
+            'ai_success_rate' => $this->getAISuccessRate(),
+            'ai_growth' => $this->getAIGrowth(),
+            
+            // Sistema
             'system_health' => $this->getSystemHealth(),
             'storage_percent' => $this->getStoragePercent(),
-            'users_growth' => $this->getUsersGrowth(),
-            'ai_growth' => $this->getAIGrowth(),
-            // Dados específicos dos módulos IA
-            'ai_ortopedica' => $this->getAIUsageByCategory('ortopedica'),
-            'ai_neurologica' => $this->getAIUsageByCategory('neurologica'),
-            'ai_respiratoria' => $this->getAIUsageByCategory('respiratoria'),
-            'ai_geriatrica' => $this->getAIUsageByCategory('geriatrica'),
-            'ai_pediatrica' => $this->getAIUsageByCategory('pediatrica')
+            'database_size' => $this->getDatabaseSize(),
+            'api_status' => $this->getAPIStatus(),
+            
+            // Top Robôs Dr. IA mais usados
+            'top_robots' => $this->getTopRobots(),
+            
+            // Estatísticas por categoria
+            'robots_by_category' => $this->getRobotsByCategory()
         ];
         
-        // Últimas atividades
+        // Atividades recentes
         $recentActivities = $this->getRecentActivities();
+        
+        // Logs recentes de API
+        $recentApiLogs = $this->getRecentApiLogs();
         
         // Usar o mesmo padrão das outras páginas
         $this->render('dashboard/fisio-admin', [
@@ -53,7 +70,8 @@ class DashboardController extends BaseController {
             'currentPage' => 'dashboard',
             'user' => $this->user,
             'stats' => $stats,
-            'activities' => $recentActivities
+            'activities' => $recentActivities,
+            'apiLogs' => $recentApiLogs
         ], 'fisioterapia-premium');
     }
     
@@ -263,6 +281,147 @@ class DashboardController extends BaseController {
             return $stmt->fetchColumn();
         } catch (Exception $e) {
             return 0;
+        }
+    }
+    
+    // Novos métodos para dados reais dos robôs Dr. IA
+    private function getUsersByRole($role) {
+        try {
+            $stmt = $this->db->prepare("SELECT COUNT(*) FROM users WHERE role = ? AND deleted_at IS NULL");
+            $stmt->execute([$role]);
+            return $stmt->fetchColumn();
+        } catch (Exception $e) {
+            return 0;
+        }
+    }
+    
+    private function getTotalRobots() {
+        try {
+            $stmt = $this->db->query("SELECT COUNT(*) FROM dr_ai_robots");
+            return $stmt->fetchColumn();
+        } catch (Exception $e) {
+            return 0;
+        }
+    }
+    
+    private function getActiveRobots() {
+        try {
+            $stmt = $this->db->query("SELECT COUNT(*) FROM dr_ai_robots WHERE is_active = 1");
+            return $stmt->fetchColumn();
+        } catch (Exception $e) {
+            return 0;
+        }
+    }
+    
+    private function getAIRequestsTotal() {
+        try {
+            $stmt = $this->db->query("
+                SELECT COUNT(*) FROM api_usage_logs 
+                WHERE created_at IS NOT NULL
+            ");
+            return $stmt->fetchColumn();
+        } catch (Exception $e) {
+            return 0;
+        }
+    }
+    
+    private function getAISuccessRate() {
+        try {
+            $stmt = $this->db->query("
+                SELECT 
+                    ROUND(
+                        SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 1
+                    ) as success_rate
+                FROM api_usage_logs 
+                WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+            ");
+            return $stmt->fetchColumn() ?: 100;
+        } catch (Exception $e) {
+            return 100;
+        }
+    }
+    
+    private function getDatabaseSize() {
+        try {
+            $stmt = $this->db->query("
+                SELECT 
+                    ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) AS 'db_size_mb'
+                FROM information_schema.tables 
+                WHERE table_schema = DATABASE()
+            ");
+            return $stmt->fetchColumn() . ' MB';
+        } catch (Exception $e) {
+            return 'N/A';
+        }
+    }
+    
+    private function getAPIStatus() {
+        try {
+            $stmt = $this->db->query("
+                SELECT COUNT(*) FROM api_usage_logs 
+                WHERE created_at >= DATE_SUB(NOW(), INTERVAL 5 MINUTE)
+            ");
+            return $stmt->fetchColumn() > 0 ? 'online' : 'idle';
+        } catch (Exception $e) {
+            return 'offline';
+        }
+    }
+    
+    private function getTopRobots() {
+        try {
+            $stmt = $this->db->query("
+                SELECT 
+                    r.robot_name,
+                    r.robot_category,
+                    r.robot_icon,
+                    COALESCE(COUNT(l.id), 0) as usage_count,
+                    COALESCE(ROUND(AVG(CASE WHEN l.success = 1 THEN 100 ELSE 0 END), 1), 100) as success_rate
+                FROM dr_ai_robots r
+                LEFT JOIN api_usage_logs l ON r.robot_slug = l.robot_name 
+                    AND l.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+                WHERE r.is_active = 1
+                GROUP BY r.id, r.robot_name, r.robot_category, r.robot_icon
+                ORDER BY usage_count DESC
+                LIMIT 5
+            ");
+            return $stmt->fetchAll();
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+    
+    private function getRobotsByCategory() {
+        try {
+            $stmt = $this->db->query("
+                SELECT 
+                    robot_category as category,
+                    COUNT(*) as total,
+                    SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active
+                FROM dr_ai_robots
+                GROUP BY robot_category
+                ORDER BY total DESC
+            ");
+            return $stmt->fetchAll();
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+    
+    private function getRecentApiLogs() {
+        try {
+            $stmt = $this->db->query("
+                SELECT 
+                    l.*,
+                    r.robot_name,
+                    r.robot_icon
+                FROM api_usage_logs l
+                LEFT JOIN dr_ai_robots r ON l.robot_name = r.robot_slug
+                ORDER BY l.created_at DESC
+                LIMIT 10
+            ");
+            return $stmt->fetchAll();
+        } catch (Exception $e) {
+            return [];
         }
     }
 }

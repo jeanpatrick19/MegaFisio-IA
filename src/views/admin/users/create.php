@@ -100,14 +100,10 @@
                             <label for="role" class="form-label required">Perfil de Acesso</label>
                             <select id="role" name="role" class="form-control" required>
                                 <option value="">Selecione um perfil</option>
-                                <option value="super_admin" <?= ($_POST['role'] ?? '') === 'super_admin' ? 'selected' : '' ?>>Super Administrador</option>
                                 <option value="admin" <?= ($_POST['role'] ?? '') === 'admin' ? 'selected' : '' ?>>Administrador</option>
-                                <option value="manager" <?= ($_POST['role'] ?? '') === 'manager' ? 'selected' : '' ?>>Gerente</option>
-                                <option value="professional" <?= ($_POST['role'] ?? 'professional') === 'professional' ? 'selected' : '' ?>>Profissional</option>
-                                <option value="assistant" <?= ($_POST['role'] ?? '') === 'assistant' ? 'selected' : '' ?>>Assistente</option>
-                                <option value="viewer" <?= ($_POST['role'] ?? '') === 'viewer' ? 'selected' : '' ?>>Visualizador</option>
+                                <option value="usuario" <?= ($_POST['role'] ?? 'usuario') === 'usuario' ? 'selected' : '' ?>>Fisioterapeuta</option>
                             </select>
-                            <div class="form-help">Determina as permissões do usuário</div>
+                            <div class="form-help">Administrador: acesso total | Fisioterapeuta: permissões específicas</div>
                         </div>
                         
                         <div class="form-group">
@@ -142,11 +138,11 @@
                             <select id="manager_id" name="manager_id" class="form-control">
                                 <option value="">Selecione um supervisor</option>
                                 <?php
-                                // Buscar usuários que podem ser supervisores
+                                // Buscar administradores que podem ser supervisores
                                 $stmt = $this->db->query("
                                     SELECT id, name, role 
                                     FROM users 
-                                    WHERE role IN ('admin', 'manager', 'super_admin') 
+                                    WHERE role = 'admin' 
                                     AND status = 'active' 
                                     AND deleted_at IS NULL 
                                     ORDER BY name

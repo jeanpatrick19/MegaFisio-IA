@@ -123,13 +123,24 @@ class SmartMigrationManager {
                 'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
                 'updated_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'
             ],
+            'system_features' => [
+                'id' => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'name' => 'VARCHAR(100) NOT NULL UNIQUE',
+                'display_name' => 'VARCHAR(150) NOT NULL',
+                'description' => 'TEXT NULL',
+                'category' => 'VARCHAR(50) NOT NULL DEFAULT "geral"',
+                'is_active' => 'TINYINT(1) DEFAULT 1',
+                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'updated_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'
+            ],
             'user_permissions' => [
                 'id' => 'INT AUTO_INCREMENT PRIMARY KEY',
                 'user_id' => 'INT NOT NULL',
-                'permission' => 'VARCHAR(100) NOT NULL',
-                'granted_by' => 'INT NULL',
-                'granted_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
-                'expires_at' => 'TIMESTAMP NULL'
+                'feature_id' => 'INT NOT NULL',
+                'can_use' => 'TINYINT(1) DEFAULT 0',
+                'can_view' => 'TINYINT(1) DEFAULT 0',
+                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'updated_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'
             ],
             'login_attempts' => [
                 'id' => 'BIGINT AUTO_INCREMENT PRIMARY KEY',
@@ -332,6 +343,76 @@ class SmartMigrationManager {
                 'processed_at' => 'TIMESTAMP NULL',
                 'processed_by' => 'INT NULL',
                 'completion_notes' => 'TEXT NULL'
+            ],
+            'api_configurations' => [
+                'id' => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'api_key' => 'VARCHAR(255) NULL COMMENT "Chave da API OpenAI (criptografada)"',
+                'default_model' => 'VARCHAR(50) DEFAULT "gpt-4o-mini" COMMENT "Modelo GPT padrão"',
+                'daily_limit' => 'INT DEFAULT 1000 COMMENT "Limite diário global de requisições"',
+                'timeout_seconds' => 'INT DEFAULT 30 COMMENT "Timeout para requisições em segundos"',
+                'is_active' => 'BOOLEAN DEFAULT TRUE COMMENT "Se a API está ativa"',
+                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'updated_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'
+            ],
+            'robot_model_settings' => [
+                'id' => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'robot_name' => 'VARCHAR(100) NOT NULL COMMENT "Nome do robô Dr. IA"',
+                'robot_id' => 'INT NULL COMMENT "ID do prompt/robô"',
+                'gpt_model' => 'VARCHAR(50) DEFAULT "gpt-4o-mini" COMMENT "Modelo GPT específico"',
+                'category' => 'VARCHAR(50) NOT NULL COMMENT "Categoria do robô"',
+                'daily_limit' => 'INT DEFAULT 50 COMMENT "Limite diário de requisições por robô"',
+                'is_active' => 'BOOLEAN DEFAULT TRUE',
+                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'updated_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+                'INDEX idx_robot_name' => '(robot_name)',
+                'INDEX idx_category' => '(category)'
+            ],
+            'api_usage_logs' => [
+                'id' => 'BIGINT AUTO_INCREMENT PRIMARY KEY',
+                'user_id' => 'INT NOT NULL COMMENT "Usuário que fez a requisição"',
+                'robot_name' => 'VARCHAR(100) NOT NULL COMMENT "Nome do robô usado"',
+                'gpt_model' => 'VARCHAR(50) NOT NULL COMMENT "Modelo GPT utilizado"',
+                'tokens_used' => 'INT DEFAULT 0 COMMENT "Tokens consumidos"',
+                'estimated_cost' => 'DECIMAL(10,4) DEFAULT 0.0000 COMMENT "Custo estimado em USD"',
+                'response_time' => 'DECIMAL(10,3) DEFAULT 0.000 COMMENT "Tempo de resposta em segundos"',
+                'success' => 'BOOLEAN DEFAULT TRUE COMMENT "Se a requisição foi bem-sucedida"',
+                'error_message' => 'TEXT NULL COMMENT "Mensagem de erro se houver"',
+                'request_date' => 'DATE NOT NULL COMMENT "Data da requisição"',
+                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'INDEX idx_user_id' => '(user_id)',
+                'INDEX idx_robot_name' => '(robot_name)',
+                'INDEX idx_request_date' => '(request_date)',
+                'INDEX idx_success' => '(success)'
+            ],
+            'api_status_checks' => [
+                'id' => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'status' => "ENUM('online', 'offline', 'error') DEFAULT 'online' COMMENT \"Status da API\"",
+                'response_time' => 'DECIMAL(10,3) NULL COMMENT "Tempo de resposta em segundos"',
+                'error_details' => 'TEXT NULL COMMENT "Detalhes do erro se houver"',
+                'checked_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'INDEX idx_status' => '(status)',
+                'INDEX idx_checked_at' => '(checked_at)'
+            ],
+            'dr_ai_robots' => [
+                'id' => 'INT AUTO_INCREMENT PRIMARY KEY',
+                'robot_name' => 'VARCHAR(100) NOT NULL UNIQUE COMMENT "Nome único do robô"',
+                'robot_slug' => 'VARCHAR(100) NOT NULL UNIQUE COMMENT "Slug para URL (ex: autoritas, acolhe)"',
+                'robot_title' => 'VARCHAR(200) NOT NULL COMMENT "Título completo para exibição"',
+                'robot_description' => 'TEXT NOT NULL COMMENT "Descrição do robô"',
+                'robot_specialty' => 'VARCHAR(200) NOT NULL COMMENT "Especialidade do robô"',
+                'robot_icon' => 'VARCHAR(50) NOT NULL COMMENT "Classe do ícone FontAwesome"',
+                'robot_color' => 'VARCHAR(20) DEFAULT "#667eea" COMMENT "Cor do gradiente"',
+                'robot_category' => 'VARCHAR(50) NOT NULL COMMENT "Categoria do robô"',
+                'has_page' => 'BOOLEAN DEFAULT FALSE COMMENT "Se tem página individual criada"',
+                'controller_method' => 'VARCHAR(100) NULL COMMENT "Método do controller"',
+                'route_path' => 'VARCHAR(200) NULL COMMENT "Caminho da rota"',
+                'is_active' => 'BOOLEAN DEFAULT TRUE',
+                'sort_order' => 'INT DEFAULT 0',
+                'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+                'updated_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+                'INDEX idx_robot_slug' => '(robot_slug)',
+                'INDEX idx_robot_category' => '(robot_category)',
+                'INDEX idx_has_page' => '(has_page)'
             ]
         ];
         
@@ -418,9 +499,18 @@ class SmartMigrationManager {
             $this->createUserActivitiesTable();
             $this->createUserPreferencesTable();
             $this->createSystemConfigTable();
+            $this->createApiConfigurationsTable();
+            $this->createRobotModelSettingsTable();
+            $this->createApiUsageLogsTable();
+            $this->createApiStatusChecksTable();
+            $this->createDrAiRobotsTable();
             $this->insertDefaultSettings();
             $this->insertDefaultAdmin();
             $this->insertDefaultPrompts();
+            $this->insertDefaultApiConfig();
+            $this->insertDefaultRobotSettings();
+            $this->setupDrAiRobots();
+            $this->updateUserRoles();
             $this->updateAiPromptsStructure();
             $this->smartSchemaUpdate();
         } catch (Exception $e) {
@@ -813,17 +903,39 @@ class SmartMigrationManager {
             id INT AUTO_INCREMENT PRIMARY KEY,
             user_id INT NOT NULL,
             permission VARCHAR(100) NOT NULL,
+            permission_key VARCHAR(100) NULL,
             granted_by INT NULL,
             granted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             expires_at TIMESTAMP NULL,
+            is_active BOOLEAN DEFAULT TRUE,
             INDEX idx_user_id (user_id),
             INDEX idx_permission (permission),
+            INDEX idx_permission_key (permission_key),
             UNIQUE KEY unique_user_permission (user_id, permission)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
         
         $this->db->query($sql);
+        
+        // Adicionar colunas novas se não existirem
+        $this->addColumnIfNotExists('user_permissions', 'permission_key', 'VARCHAR(100) NULL');
+        $this->addColumnIfNotExists('user_permissions', 'is_active', 'BOOLEAN DEFAULT TRUE');
+        
+        // Migrar dados antigos: copiar permission para permission_key se necessário
+        try {
+            $this->db->query("
+                UPDATE user_permissions 
+                SET permission_key = permission 
+                WHERE permission_key IS NULL OR permission_key = ''
+            ");
+        } catch (Exception $e) {
+            // Ignorar erros
+        }
+        
         $this->addForeignKeyIfNotExists('user_permissions', 'fk_perm_user', 'user_id', 'users', 'id', 'CASCADE');
         $this->addForeignKeyIfNotExists('user_permissions', 'fk_perm_granted_by', 'granted_by', 'users', 'id', 'SET NULL');
+        
+        // Inserir permissões padrão para usuários fisioterapeutas
+        $this->insertDefaultUserPermissions();
     }
     
     private function createLoginAttemptsTable() {
@@ -1059,6 +1171,76 @@ class SmartMigrationManager {
         $this->db->query($sql);
     }
     
+    private function createApiConfigurationsTable() {
+        $sql = "CREATE TABLE IF NOT EXISTS api_configurations (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            api_key VARCHAR(255) NULL COMMENT 'Chave da API OpenAI (criptografada)',
+            default_model VARCHAR(50) DEFAULT 'gpt-4o-mini' COMMENT 'Modelo GPT padrão',
+            daily_limit INT DEFAULT 1000 COMMENT 'Limite diário global de requisições',
+            timeout_seconds INT DEFAULT 30 COMMENT 'Timeout para requisições em segundos',
+            is_active BOOLEAN DEFAULT TRUE COMMENT 'Se a API está ativa',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        $this->db->query($sql);
+    }
+    
+    private function createRobotModelSettingsTable() {
+        $sql = "CREATE TABLE IF NOT EXISTS robot_model_settings (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            robot_name VARCHAR(100) NOT NULL COMMENT 'Nome do robô Dr. IA',
+            robot_id INT NULL COMMENT 'ID do prompt/robô',
+            gpt_model VARCHAR(50) DEFAULT 'gpt-4o-mini' COMMENT 'Modelo GPT específico',
+            category VARCHAR(50) NOT NULL COMMENT 'Categoria do robô',
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_robot_name (robot_name),
+            INDEX idx_category (category)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        $this->db->query($sql);
+        $this->addForeignKeyIfNotExists('robot_model_settings', 'fk_robot_prompt', 'robot_id', 'ai_prompts', 'id', 'SET NULL');
+    }
+    
+    private function createApiUsageLogsTable() {
+        $sql = "CREATE TABLE IF NOT EXISTS api_usage_logs (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL COMMENT 'Usuário que fez a requisição',
+            robot_name VARCHAR(100) NOT NULL COMMENT 'Nome do robô usado',
+            gpt_model VARCHAR(50) NOT NULL COMMENT 'Modelo GPT utilizado',
+            tokens_used INT DEFAULT 0 COMMENT 'Tokens consumidos',
+            estimated_cost DECIMAL(10,4) DEFAULT 0.0000 COMMENT 'Custo estimado em USD',
+            response_time DECIMAL(10,3) DEFAULT 0.000 COMMENT 'Tempo de resposta em segundos',
+            success BOOLEAN DEFAULT TRUE COMMENT 'Se a requisição foi bem-sucedida',
+            error_message TEXT NULL COMMENT 'Mensagem de erro se houver',
+            request_date DATE NOT NULL COMMENT 'Data da requisição',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_user_id (user_id),
+            INDEX idx_robot_name (robot_name),
+            INDEX idx_request_date (request_date),
+            INDEX idx_success (success)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        $this->db->query($sql);
+        $this->addForeignKeyIfNotExists('api_usage_logs', 'fk_usage_user', 'user_id', 'users', 'id', 'CASCADE');
+    }
+    
+    private function createApiStatusChecksTable() {
+        $sql = "CREATE TABLE IF NOT EXISTS api_status_checks (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            status ENUM('online', 'offline', 'error') DEFAULT 'online' COMMENT 'Status da API',
+            response_time DECIMAL(10,3) NULL COMMENT 'Tempo de resposta em segundos',
+            error_details TEXT NULL COMMENT 'Detalhes do erro se houver',
+            checked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_status (status),
+            INDEX idx_checked_at (checked_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        $this->db->query($sql);
+    }
+    
     
     private function createIndexIfNotExists($table, $indexName, $columns) {
         try {
@@ -1229,6 +1411,193 @@ Seja preciso e baseie-se nas diretrizes oficiais da CID-10.',
                 $stmt->execute([$prompt['nome'], $prompt['descricao'], $prompt['prompt_template'], $prompt['status'], $prompt['limite_requisicoes']]);
             } catch (Exception $e) {
                 // Ignorar erros de duplicação
+            }
+        }
+    }
+    
+    private function insertDefaultApiConfig() {
+        try {
+            $stmt = $this->db->prepare("INSERT INTO api_configurations (default_model, daily_limit, timeout_seconds, is_active) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE id = id");
+            $stmt->execute([
+                'gpt-4o-mini',
+                1000,
+                30,
+                1
+            ]);
+        } catch (Exception $e) {
+            // Ignorar erros de duplicação
+        }
+    }
+    
+    private function insertDefaultRobotSettings() {
+        $robots = [
+            ['Dr. Autoritas', 1, 'gpt-4o-mini', 'marketing'],
+            ['Dr. Acolhe', 2, 'gpt-4o', 'atendimento'],
+            ['Dr. Fechador', 3, 'gpt-4o-mini', 'vendas'],
+            ['Dr. Reab', 4, 'gpt-4o-mini', 'clinica'],
+            ['Dra. Protoc', 5, 'gpt-4o-mini', 'clinica'],
+            ['Dra. Edu', 6, 'gpt-4o-mini', 'educacao'],
+            ['Dr. Científico', 7, 'gpt-4o', 'pesquisa'],
+            ['Dr. Injetáveis', 8, 'gpt-4o-mini', 'clinica'],
+            ['Dr. Local', 9, 'gpt-4o-mini', 'marketing'],
+            ['Dr. Recall', 10, 'gpt-4o-mini', 'fidelizacao'],
+            ['Dr. Evolucio', 11, 'gpt-4o-mini', 'clinica'],
+            ['Dra. Legal', 12, 'gpt-4o', 'juridico'],
+            ['Dr. Contratus', 13, 'gpt-4o', 'juridico'],
+            ['Dr. Imago', 14, 'gpt-4o-mini', 'juridico'],
+            ['Dr. Imaginário', 15, 'gpt-4o', 'diagnostico'],
+            ['Dr. Diagnostik', 16, 'gpt-4o', 'diagnostico'],
+            ['Dr. Integralis', 17, 'gpt-4o', 'diagnostico'],
+            ['Dr. POP', 18, 'gpt-4o-mini', 'gestao'],
+            ['Dr. Vigilantis', 19, 'gpt-4o-mini', 'gestao'],
+            ['Dr. Fórmula Oral', 20, 'gpt-4o-mini', 'clinica'],
+            ['Dra. Contrology', 21, 'gpt-4o-mini', 'clinica'],
+            ['Dr. Posturalis', 22, 'gpt-4o-mini', 'clinica'],
+            ['Dr. Peritus', 23, 'gpt-4o', 'juridico']
+        ];
+        
+        foreach ($robots as $robot) {
+            try {
+                $stmt = $this->db->prepare("INSERT INTO robot_model_settings (robot_name, robot_id, gpt_model, category, is_active) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE robot_name = robot_name");
+                $stmt->execute([$robot[0], $robot[1], $robot[2], $robot[3], 1]);
+            } catch (Exception $e) {
+                // Ignorar erros de duplicação
+            }
+        }
+        
+        // Também popular a nova tabela dr_ai_robots
+        $this->setupDrAiRobots();
+    }
+    
+    /**
+     * Configura a tabela dr_ai_robots com os robôs criados até agora
+     */
+    private function setupDrAiRobots() {
+        // Dados dos robôs criados até agora
+        $robots = [
+            [
+                'robot_name' => 'Dr. Autoritas',
+                'robot_slug' => 'autoritas',
+                'robot_title' => 'Dr. Autoritas - Conteúdo para Instagram',
+                'robot_description' => 'Especialista em conteúdo para Instagram - Crie posts magnéticos que atraem pacientes',
+                'robot_specialty' => 'Social Media especializada em fisioterapia e marketing digital',
+                'robot_icon' => 'fab fa-instagram',
+                'robot_color' => '#667eea',
+                'robot_category' => 'marketing',
+                'has_page' => true,
+                'controller_method' => 'autoritas',
+                'route_path' => 'ai/autoritas',
+                'sort_order' => 1
+            ],
+            [
+                'robot_name' => 'Dr. Acolhe',
+                'robot_slug' => 'acolhe',
+                'robot_title' => 'Dr. Acolhe - Atendimento via WhatsApp/Direct',
+                'robot_description' => 'Especialista em atendimento via WhatsApp e Direct - Transforme conversas em agendamentos',
+                'robot_specialty' => 'Especialista em atendimento humanizado e conversão digital',
+                'robot_icon' => 'fab fa-whatsapp',
+                'robot_color' => '#25D366',
+                'robot_category' => 'atendimento',
+                'has_page' => true,
+                'controller_method' => 'acolhe',
+                'route_path' => 'ai/acolhe',
+                'sort_order' => 2
+            ],
+            [
+                'robot_name' => 'Dr. Fechador',
+                'robot_slug' => 'fechador',
+                'robot_title' => 'Dr. Fechador - Vendas de Planos Fisioterapêuticos',
+                'robot_description' => 'Especialista em vendas de planos fisioterapêuticos - Converta leads em pacientes fiéis',
+                'robot_specialty' => 'Especialista em vendas éticas e consultivas para fisioterapia',
+                'robot_icon' => 'fas fa-handshake',
+                'robot_color' => '#FF6B35',
+                'robot_category' => 'vendas',
+                'has_page' => true,
+                'controller_method' => 'fechador',
+                'route_path' => 'ai/fechador',
+                'sort_order' => 3
+            ],
+            [
+                'robot_name' => 'Dr. Reab',
+                'robot_slug' => 'reab',
+                'robot_title' => 'Dr. Reab - Prescrição de Exercícios Personalizados',
+                'robot_description' => 'Especialista em prescrição de exercícios personalizados - Crie planos de reabilitação eficazes',
+                'robot_specialty' => 'Especialista em prescrição de exercícios terapêuticos e reabilitação',
+                'robot_icon' => 'fas fa-dumbbell',
+                'robot_color' => '#28A745',
+                'robot_category' => 'clinica',
+                'has_page' => true,
+                'controller_method' => 'reab',
+                'route_path' => 'ai/reab',
+                'sort_order' => 4
+            ],
+            [
+                'robot_name' => 'Dra. Protoc',
+                'robot_slug' => 'protoc',
+                'robot_title' => 'Dra. Protoc - Protocolos Terapêuticos Estruturados',
+                'robot_description' => 'Especialista em protocolos terapêuticos estruturados - Crie protocolos baseados em evidências',
+                'robot_specialty' => 'Especialista em protocolos terapêuticos baseados em evidências científicas',
+                'robot_icon' => 'fas fa-clipboard-list',
+                'robot_color' => '#6366F1',
+                'robot_category' => 'clinica',
+                'has_page' => true,
+                'controller_method' => 'protoc',
+                'route_path' => 'ai/protoc',
+                'sort_order' => 5
+            ],
+            // Robôs que ainda não tem página (has_page = false)
+            [
+                'robot_name' => 'Dra. Edu',
+                'robot_slug' => 'edu',
+                'robot_title' => 'Dra. Edu - Materiais Educativos para Pacientes',
+                'robot_description' => 'Especialista em materiais educativos para pacientes',
+                'robot_specialty' => 'Criação de conteúdo educativo',
+                'robot_icon' => 'fas fa-graduation-cap',
+                'robot_color' => '#667eea',
+                'robot_category' => 'educacao',
+                'has_page' => false,
+                'controller_method' => null,
+                'route_path' => null,
+                'sort_order' => 6
+            ]
+            // ... outros robôs serão adicionados conforme forem criados
+        ];
+        
+        foreach ($robots as $robot) {
+            try {
+                $stmt = $this->db->prepare("
+                    INSERT INTO dr_ai_robots 
+                    (robot_name, robot_slug, robot_title, robot_description, robot_specialty, robot_icon, robot_color, robot_category, has_page, controller_method, route_path, sort_order) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON DUPLICATE KEY UPDATE 
+                        robot_title = VALUES(robot_title),
+                        robot_description = VALUES(robot_description),
+                        robot_specialty = VALUES(robot_specialty),
+                        robot_icon = VALUES(robot_icon),
+                        robot_color = VALUES(robot_color),
+                        robot_category = VALUES(robot_category),
+                        has_page = VALUES(has_page),
+                        controller_method = VALUES(controller_method),
+                        route_path = VALUES(route_path),
+                        sort_order = VALUES(sort_order),
+                        updated_at = NOW()
+                ");
+                $stmt->execute([
+                    $robot['robot_name'],
+                    $robot['robot_slug'],
+                    $robot['robot_title'],
+                    $robot['robot_description'],
+                    $robot['robot_specialty'],
+                    $robot['robot_icon'],
+                    $robot['robot_color'],
+                    $robot['robot_category'],
+                    $robot['has_page'],
+                    $robot['controller_method'],
+                    $robot['route_path'],
+                    $robot['sort_order']
+                ]);
+            } catch (Exception $e) {
+                error_log("Erro ao inserir robô Dr. IA: " . $e->getMessage());
             }
         }
     }
@@ -1426,4 +1795,106 @@ Seja preciso e baseie-se nas diretrizes oficiais da CID-10.',
             error_log("Erro ao criar tabela {$tableName}: " . $e->getMessage());
         }
     }
+    
+    /**
+     * Inserir permissões padrão para usuários fisioterapeutas
+     */
+    private function insertDefaultUserPermissions() {
+        try {
+            // Permissões padrão para fisioterapeutas
+            $defaultPermissions = [
+                'ai_basic_access',
+                'patients_view', 
+                'reports_view',
+                'system_preferences'
+            ];
+            
+            foreach ($defaultPermissions as $permission) {
+                $stmt = $this->db->prepare("
+                    INSERT IGNORE INTO user_permissions (user_id, permission_key, permission, granted_at, is_active) 
+                    SELECT id, ?, ?, NOW(), 1 
+                    FROM users 
+                    WHERE role = 'usuario' AND deleted_at IS NULL
+                ");
+                $stmt->execute([$permission, $permission]);
+            }
+            
+        } catch (Exception $e) {
+            error_log("Erro ao inserir permissões padrão: " . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Atualizar roles dos usuários para o novo sistema
+     */
+    private function updateUserRoles() {
+        try {
+            // Atualizar role 'professional' para 'usuario'
+            $this->db->query("
+                UPDATE users 
+                SET role = 'usuario' 
+                WHERE role = 'professional'
+            ");
+            
+            // Verificar se existe enum correto
+            $stmt = $this->db->query("
+                SELECT COLUMN_TYPE 
+                FROM INFORMATION_SCHEMA.COLUMNS 
+                WHERE TABLE_SCHEMA = '{$this->database}' 
+                AND TABLE_NAME = 'users' 
+                AND COLUMN_NAME = 'role'
+            ");
+            
+            $columnType = $stmt->fetchColumn();
+            if (strpos($columnType, 'usuario') === false) {
+                // Adicionar 'usuario' ao enum
+                $this->db->query("
+                    ALTER TABLE users 
+                    MODIFY role ENUM('admin', 'professional', 'patient', 'usuario') DEFAULT 'usuario'
+                ");
+                
+                // Atualizar novamente após modificar enum
+                $this->db->query("
+                    UPDATE users 
+                    SET role = 'usuario' 
+                    WHERE role = 'professional'
+                ");
+            }
+            
+        } catch (Exception $e) {
+            error_log("Erro ao atualizar roles de usuários: " . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Criar tabela dr_ai_robots para gerenciar robôs dinamicamente
+     */
+    private function createDrAiRobotsTable() {
+        $sql = "CREATE TABLE IF NOT EXISTS dr_ai_robots (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            robot_name VARCHAR(100) NOT NULL UNIQUE COMMENT 'Nome único do robô',
+            robot_slug VARCHAR(100) NOT NULL UNIQUE COMMENT 'Slug para URL',
+            robot_title VARCHAR(200) NOT NULL COMMENT 'Título completo para exibição',
+            robot_description TEXT NOT NULL COMMENT 'Descrição do robô',
+            robot_specialty VARCHAR(200) NOT NULL COMMENT 'Especialidade do robô',
+            robot_icon VARCHAR(50) NOT NULL COMMENT 'Classe do ícone FontAwesome',
+            robot_color VARCHAR(20) DEFAULT '#667eea' COMMENT 'Cor do gradiente',
+            robot_category VARCHAR(50) NOT NULL COMMENT 'Categoria do robô',
+            has_page BOOLEAN DEFAULT FALSE COMMENT 'Se tem página individual criada',
+            controller_method VARCHAR(100) NULL COMMENT 'Método do controller',
+            route_path VARCHAR(200) NULL COMMENT 'Caminho da rota',
+            is_active BOOLEAN DEFAULT TRUE,
+            sort_order INT DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            
+            INDEX idx_robot_slug (robot_slug),
+            INDEX idx_robot_category (robot_category),
+            INDEX idx_has_page (has_page),
+            INDEX idx_is_active (is_active)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        $this->db->query($sql);
+    }
+    
 }

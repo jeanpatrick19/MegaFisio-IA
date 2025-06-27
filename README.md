@@ -136,6 +136,39 @@ DB_PASS=sua_senha
 - mod_rewrite habilitado
 - HTTPS recomendado
 
+## 🚀 Deploy para Hospedagem (FTP)
+
+### Preparação para Produção
+
+**1. Configuração do Banco de Dados**
+Edite `config/db_config.php` com os dados da hospedagem:
+```php
+// PRODUÇÃO - Altere com os dados da sua hospedagem
+return [
+    'host' => 'localhost',                    // Ex: 'mysql.hostinger.com'
+    'database' => 'megafisio_ia',             // Ex: 'u123456_megafisio'
+    'username' => 'seu_usuario_mysql',        // Ex: 'u123456_admin'
+    'password' => 'sua_senha_mysql',          // Senha do MySQL
+    'charset' => 'utf8mb4'
+];
+```
+
+**2. Upload via FTP**
+- Faça upload de **TODOS** os arquivos para o diretório raiz
+- Mantenha a estrutura de pastas exata
+- Verifique se o `.htaccess` foi transferido
+
+**3. Primeiro Acesso**
+- Sistema detecta automaticamente que está em produção
+- URLs serão configuradas baseadas no seu domínio
+- Login padrão: admin@megafisio.com / admin123
+
+**4. Recursos Automáticos**
+- ✅ Auto-detecção localhost vs produção
+- ✅ Criação automática do banco e tabelas
+- ✅ URLs dinâmicas baseadas no domínio
+- ✅ Configuração automática HTTPS/HTTP
+
 ## 🔧 Problemas Comuns
 
 ### URLs/CSS não carregam (localhost:8080)
@@ -150,25 +183,29 @@ RewriteBase /megafisio-ia/
 - Verifique `config/environment.php`
 - Se necessário,force: `'is_production' => false`
 
-### Erro de Conexão MySQL
-- Verifique credenciais no painel da hospedagem
-- Certifique-se que o banco foi criado
-- Teste conexão manual via phpMyAdmin
+### Erro de Conexão MySQL na Hospedagem
+- Verifique credenciais em `config/db_config.php`
+- Certifique-se que o banco existe no painel da hospedagem
+- Verifique se o usuário MySQL tem permissões CREATE
+- Teste conexão via phpMyAdmin da hospedagem
 
-### Erro 500
+### Erro 500 na Hospedagem
 - Verifique permissões dos arquivos (644 para arquivos, 755 para pastas)
-- Consulte error_log do servidor
-- Certifique-se que mod_rewrite está ativo
+- Consulte error_log no painel da hospedagem
+- Certifique-se que PHP >= 7.4 está ativo
+- Verifique se mod_rewrite está habilitado
 
-### Deploy em Produção
-- Sistema detecta automaticamente
-- Mantenha `.htaccess` como está (RewriteBase comentado)
-- URLs serão ajustadas automaticamente
+### Deploy em Produção via FTP
+- ✅ Sistema detecta automaticamente produção
+- ✅ Apenas edite `config/db_config.php` com dados da hospedagem
+- ✅ URLs e configurações são automáticas
+- ✅ HTTPS detectado e configurado automaticamente
 
 ### Login não funciona
 - Execute novamente o instalador
 - Verifique se as tabelas foram criadas
 - Limpe cache do navegador
+- Verifique configurações de sessão no painel da hospedagem
 
 ## 📞 Suporte
 

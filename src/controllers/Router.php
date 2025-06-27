@@ -10,6 +10,7 @@ class Router {
     public function __construct() {
         $this->db = Database::getInstance();
         $this->defineRoutes();
+        $this->loadDynamicRobotRoutes();
     }
     
     private function defineRoutes() {
@@ -65,21 +66,40 @@ class Router {
             'admin/users/delete' => ['controller' => 'UserController', 'method' => 'delete'],
             'admin/users/change-password' => ['controller' => 'UserController', 'method' => 'changePassword'],
             'admin/users/unlock' => ['controller' => 'UserController', 'method' => 'unlock'],
+            'admin/users/toggle-status' => ['controller' => 'UserController', 'method' => 'toggleStatus'],
+            'admin/users/permissions' => ['controller' => 'UserController', 'method' => 'permissions'],
+            'admin/users/logs' => ['controller' => 'UserController', 'method' => 'logs'],
+            'admin/users/privacy' => ['controller' => 'UserController', 'method' => 'privacy'],
+            'admin/users/export' => ['controller' => 'UserController', 'method' => 'export'],
+            'admin/users/get-user-data' => ['controller' => 'UserController', 'method' => 'getUserData'],
+            'admin/users/update' => ['controller' => 'UserController', 'method' => 'updateUser'],
             
             // Admin - Permissões
             'admin/permissions' => ['controller' => 'PermissionController', 'method' => 'index'],
             'admin/permissions/assignUserPermission' => ['controller' => 'PermissionController', 'method' => 'assignUserPermission'],
             'admin/permissions/bulkAssignPermissions' => ['controller' => 'PermissionController', 'method' => 'bulkAssignPermissions'],
+            'admin/permissions/bulk-assign' => ['controller' => 'PermissionController', 'method' => 'bulkAssignPermissions'],
             'admin/permissions/getUserPermissions' => ['controller' => 'PermissionController', 'method' => 'getUserPermissions'],
+            'admin/permissions/user-permissions' => ['controller' => 'PermissionController', 'method' => 'getUserPermissions'],
             'admin/permissions/getUsersWithPermissions' => ['controller' => 'PermissionController', 'method' => 'getUsersWithPermissionsAPI'],
             'admin/permissions/getModulesWithPermissions' => ['controller' => 'PermissionController', 'method' => 'getModulesWithPermissionsAPI'],
             'admin/permissions/getPermissionReport' => ['controller' => 'PermissionController', 'method' => 'getPermissionReport'],
+            'admin/permissions/users-api' => ['controller' => 'PermissionController', 'method' => 'getUsersAPI'],
+            'admin/permissions/get-user-permissions' => ['controller' => 'PermissionController', 'method' => 'getUserPermissionsNew'],
+            'admin/permissions/save-user-permissions' => ['controller' => 'PermissionController', 'method' => 'saveUserPermissions'],
             
             // Admin - Dashboard
             'admin/dashboard' => ['controller' => 'DashboardController', 'method' => 'index'],
             
             // Assistente IA
             'ai' => ['controller' => 'AIController', 'method' => 'index'],
+            'ai/configuracoes' => ['controller' => 'AIController', 'method' => 'configuracoes'],
+            'ai/save-config' => ['controller' => 'AIController', 'method' => 'saveApiConfig'],
+            'ai/save-robot-config' => ['controller' => 'AIController', 'method' => 'saveRobotConfig'],
+            'ai/check-status' => ['controller' => 'AIController', 'method' => 'checkApiStatus'],
+            'ai/gerar-conteudo' => ['controller' => 'AIController', 'method' => 'gerarConteudo'],
+            'ai/registrar-uso' => ['controller' => 'AIController', 'method' => 'registrarUso'],
+            'ai/update-robot-status' => ['controller' => 'AIController', 'method' => 'updateRobotStatus'],
             
             // Admin - Assistente IA
             'admin/ai' => ['controller' => 'AIController', 'method' => 'index'],
@@ -133,6 +153,46 @@ class Router {
             'api/auth/logout' => ['controller' => 'AuthController', 'method' => 'apiLogout'],
             'api/auth/register' => ['controller' => 'AuthController', 'method' => 'apiRegister'],
         ];
+    }
+    
+    /**
+     * Carrega rotas dinâmicas dos robôs Dr. IA do banco de dados
+     */
+    private function loadDynamicRobotRoutes() {
+        try {
+            // Verificar se a tabela dr_ai_robots existe
+            $stmt = $this->db->prepare("SHOW TABLES LIKE 'dr_ai_robots'");
+            $stmt->execute();
+            
+            if ($stmt->rowCount() === 0) {
+                return; // Tabela não existe ainda
+            }
+            
+            // Buscar robôs que têm páginas criadas
+            $stmt = $this->db->prepare("
+                SELECT robot_slug, controller_method, route_path 
+                FROM dr_ai_robots 
+                WHERE has_page = TRUE 
+                AND is_active = TRUE 
+                AND controller_method IS NOT NULL
+                ORDER BY sort_order, robot_name
+            ");
+            $stmt->execute();
+            $robots = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Adicionar rotas dinamicamente
+            foreach ($robots as $robot) {
+                $routePath = $robot['route_path'] ?: 'ai/' . $robot['robot_slug'];
+                $this->routes[$routePath] = [
+                    'controller' => 'AIController',
+                    'method' => $robot['controller_method']
+                ];
+            }
+            
+        } catch (Exception $e) {
+            // Silenciosamente ignora erros de banco - sistema deve funcionar mesmo sem tabela de robôs
+            error_log("Erro ao carregar rotas dinâmicas de robôs: " . $e->getMessage());
+        }
     }
     
     public function handleRequest() {

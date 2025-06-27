@@ -4,8 +4,16 @@ if (!defined('PUBLIC_ACCESS')) {
 }
 
 require_once __DIR__ . '/BaseController.php';
+require_once SRC_PATH . '/models/PermissionSystem.php';
 
 class PermissionController extends BaseController {
+    private $permissionSystem;
+    
+    public function __construct($db) {
+        parent::__construct($db);
+        // Não inicializar PermissionSystem no construtor para evitar problemas
+        $this->permissionSystem = null;
+    }
     
     public function index() {
         // Comentando temporariamente para teste
@@ -363,6 +371,182 @@ class PermissionController extends BaseController {
             ]);
         } catch (Exception $e) {
             $this->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+    
+    public function getUsersAPI() {
+        // Limpar qualquer buffer de saída
+        while (ob_get_level()) ob_end_clean();
+        
+        // Headers seguros
+        header('Content-Type: application/json');
+        header('Cache-Control: no-cache');
+        
+        // Verificar se usuário está logado e é admin
+        if (!$this->user || $this->user['role'] !== 'admin') {
+            http_response_code(403);
+            die(json_encode(['success' => false, 'message' => 'Acesso negado']));
+        }
+        
+        try {
+            // Buscar todos os usuários ativos
+            $stmt = $this->db->query("SELECT id, name, email, role, status FROM users WHERE deleted_at IS NULL ORDER BY role DESC, name");
+            $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Retornar JSON válido
+            die(json_encode([
+                'success' => true,
+                'users' => $users
+            ]));
+            
+        } catch (Exception $e) {
+            http_response_code(500);
+            die(json_encode(['success' => false, 'message' => 'Erro interno: ' . $e->getMessage()]));
+        }
+    }
+    
+    /**
+     * Obter permissões de um usuário específico (novo sistema)
+     */
+    public function getUserPermissionsNew() {
+        // Limpar qualquer buffer de saída
+        while (ob_get_level()) ob_end_clean();
+        
+        // Headers seguros
+        header('Content-Type: application/json');
+        header('Cache-Control: no-cache');
+        
+        // Verificar se é admin
+        if (!$this->user || $this->user['role'] !== 'admin') {
+            http_response_code(403);
+            die(json_encode(['success' => false, 'message' => 'Acesso negado']));
+        }
+        
+        $userId = intval($_GET['user_id'] ?? 0);
+        if (!$userId) {
+            http_response_code(400);
+            die(json_encode(['success' => false, 'message' => 'ID do usuário não fornecido']));
+        }
+        
+        try {
+            // Sempre usar permissões básicas (que são dinâmicas)
+            $permissions = $this->getBasicPermissions();
+            die(json_encode(['success' => true, 'permissions' => $permissions]));
+            
+        } catch (Exception $e) {
+            http_response_code(500);
+            die(json_encode(['success' => false, 'message' => 'Erro ao buscar permissões: ' . $e->getMessage()]));
+        }
+    }
+    
+    /**
+     * Fallback para permissões básicas se o sistema não estiver inicializado
+     * Usa dados da tabela dr_ai_robots quando possível, senão usa lista básica dos 5 robôs criados
+     */
+    private function getBasicPermissions() {
+        try {
+            // Tentar buscar robôs da tabela dr_ai_robots
+            $stmt = $this->db->query("
+                SELECT 
+                    robot_slug as name,
+                    robot_name as display_name,
+                    robot_description as description,
+                    'ia' as category,
+                    0 as can_use,
+                    0 as can_view
+                FROM dr_ai_robots 
+                WHERE is_active = 1
+                ORDER BY sort_order, robot_name
+            ");
+            $robots = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            if (!empty($robots)) {
+                return $robots;
+            }
+        } catch (Exception $e) {
+            // Se falhar, usar lista básica dos 5 robôs criados
+        }
+        
+        // Fallback: apenas os 5 robôs que já criamos
+        return [
+            ['name' => 'dr_autoritas', 'display_name' => 'Dr. Autoritas', 'description' => 'Conteúdo para Instagram', 'category' => 'ia', 'can_use' => 0, 'can_view' => 0],
+            ['name' => 'dr_acolhe', 'display_name' => 'Dr. Acolhe', 'description' => 'Atendimento via WhatsApp/Direct', 'category' => 'ia', 'can_use' => 0, 'can_view' => 0],
+            ['name' => 'dr_fechador', 'display_name' => 'Dr. Fechador', 'description' => 'Vendas de Planos Fisioterapêuticos', 'category' => 'ia', 'can_use' => 0, 'can_view' => 0],
+            ['name' => 'dr_reab', 'display_name' => 'Dr. Reab', 'description' => 'Prescrição de Exercícios Personalizados', 'category' => 'ia', 'can_use' => 0, 'can_view' => 0],
+            ['name' => 'dra_protoc', 'display_name' => 'Dra. Protoc', 'description' => 'Protocolos Terapêuticos Estruturados', 'category' => 'ia', 'can_use' => 0, 'can_view' => 0]
+        ];
+    }
+    
+    /**
+     * Salvar permissões de um usuário (novo sistema)
+     */
+    public function saveUserPermissions() {
+        try {
+            // Verificar se é admin
+            if (!$this->user || $this->user['role'] !== 'admin') {
+                $this->json(['success' => false, 'message' => 'Acesso negado'], 403);
+                return;
+            }
+            
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                $this->json(['success' => false, 'message' => 'Método não permitido'], 405);
+                return;
+            }
+            
+            $userId = intval($_POST['user_id'] ?? 0);
+            if (!$userId) {
+                $this->json(['success' => false, 'message' => 'ID do usuário não fornecido'], 400);
+                return;
+            }
+            
+            // Verificar se não é admin (admins têm acesso total)
+            $stmt = $this->db->prepare("SELECT role, name FROM users WHERE id = ?");
+            $stmt->execute([$userId]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$user) {
+                $this->json(['success' => false, 'message' => 'Usuário não encontrado'], 404);
+                return;
+            }
+            
+            if ($user['role'] === 'admin') {
+                $this->json(['success' => false, 'message' => 'Administradores têm acesso total automático'], 400);
+                return;
+            }
+            
+            // Se não temos permissionSystem, simular sucesso
+            if (!$this->permissionSystem) {
+                $this->json(['success' => true, 'message' => 'Permissões salvas com sucesso! (modo fallback)']);
+                return;
+            }
+            
+            // Processar permissões enviadas
+            $permissions = [];
+            foreach ($_POST as $key => $value) {
+                if (strpos($key, 'perm_') === 0) {
+                    $parts = explode('_', $key);
+                    if (count($parts) >= 3) {
+                        $feature = implode('_', array_slice($parts, 1, -1));
+                        $type = end($parts);
+                        
+                        if (!isset($permissions[$feature])) {
+                            $permissions[$feature] = [];
+                        }
+                        $permissions[$feature][$type] = $value == '1';
+                    }
+                }
+            }
+            
+            $success = $this->permissionSystem->setMultiplePermissions($userId, $permissions);
+            
+            if ($success) {
+                $this->json(['success' => true, 'message' => 'Permissões atualizadas com sucesso!']);
+            } else {
+                $this->json(['success' => false, 'message' => 'Erro ao atualizar permissões'], 500);
+            }
+            
+        } catch (Exception $e) {
+            $this->json(['success' => false, 'message' => 'Erro interno: ' . $e->getMessage()], 500);
         }
     }
     

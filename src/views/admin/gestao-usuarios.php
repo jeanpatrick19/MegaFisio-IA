@@ -21,7 +21,7 @@
             <i class="fas fa-user-md"></i>
         </div>
         <div class="stat-info">
-            <div class="stat-numero"><?= $stats['professionals'] ?? 0 ?></div>
+            <div class="stat-numero"><?= $stats['fisioterapeutas'] ?? 0 ?></div>
             <div class="stat-label-escuro" data-translate="Fisioterapeutas">Fisioterapeutas</div>
         </div>
     </div>
@@ -52,7 +52,7 @@
     <div class="acoes-esquerda">
         <button class="btn-fisio btn-primario" onclick="abrirModalNovoUsuario()">
             <i class="fas fa-user-plus"></i>
-            Novo Fisioterapeuta
+            Novo Usuário
         </button>
         
         <button class="btn-fisio btn-secundario" onclick="importarUsuarios()">
@@ -67,7 +67,6 @@
                 <option value="">Todos os Status</option>
                 <option value="active">Ativos</option>
                 <option value="inactive">Inativos</option>
-                <option value="pending">Pendentes</option>
             </select>
         </div>
         
@@ -75,7 +74,19 @@
             <select class="filtro-select" id="filtroRole" onchange="filtrarUsuarios()">
                 <option value="">Todos os Perfis</option>
                 <option value="admin">Administradores</option>
-                <option value="professional">Fisioterapeutas</option>
+                <option value="usuario">Fisioterapeutas</option>
+            </select>
+        </div>
+        
+        <div class="filtro-grupo">
+            <select class="filtro-select" id="filtroEspecialidade" onchange="filtrarUsuarios()">
+                <option value="">Todas Especialidades</option>
+                <option value="ortopedica">Ortopédica</option>
+                <option value="neurologica">Neurológica</option>
+                <option value="respiratoria">Respiratória</option>
+                <option value="geriatrica">Geriátrica</option>
+                <option value="pediatrica">Pediátrica</option>
+                <option value="esportiva">Esportiva</option>
             </select>
         </div>
         
@@ -147,13 +158,19 @@
                         <button class="btn-acao editar" onclick="editarUsuario(<?= $user['id'] ?>)" data-tooltip="Editar dados">
                             <i class="fas fa-edit"></i>
                         </button>
-                        <button class="btn-acao visualizar" onclick="visualizarUsuario(<?= $user['id'] ?>)">
-                            <i class="fas fa-eye"></i>
+                        <button class="btn-acao permissoes" onclick="gerenciarPermissoes(<?= $user['id'] ?>)" data-tooltip="Gerenciar permissões">
+                            <i class="fas fa-user-shield"></i>
                         </button>
-                        <button class="btn-acao <?= $user['status'] === 'active' ? 'pausar' : 'ativar' ?>" 
+                        <button class="btn-acao logs" onclick="visualizarLogs(<?= $user['id'] ?>)" data-tooltip="Ver logs de atividade">
+                            <i class="fas fa-history"></i>
+                        </button>
+                        <button class="btn-acao lgpd" onclick="gerenciarLGPD(<?= $user['id'] ?>)" data-tooltip="LGPD e privacidade">
+                            <i class="fas fa-shield-alt"></i>
+                        </button>
+                        <button class="btn-acao <?= $user['status'] === 'active' ? 'bloquear' : 'desbloquear' ?>" 
                                 onclick="alterarStatusUsuario(<?= $user['id'] ?>, '<?= $user['status'] ?>')" 
-                                data-tooltip="<?= $user['status'] === 'active' ? 'Desativar' : 'Ativar' ?>">
-                            <i class="fas fa-<?= $user['status'] === 'active' ? 'pause' : 'play' ?>"></i>
+                                data-tooltip="<?= $user['status'] === 'active' ? 'Bloquear usuário' : 'Desbloquear usuário' ?>">
+                            <i class="fas fa-<?= $user['status'] === 'active' ? 'ban' : 'unlock' ?>"></i>
                         </button>
                         <?php if ($user['id'] != $currentUser['id']): ?>
                         <button class="btn-acao excluir" onclick="confirmarExclusao(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" data-tooltip="Excluir permanentemente">
@@ -181,52 +198,73 @@
 <div class="modal-overlay" id="modalNovoUsuario" style="display: none;">
     <div class="modal-container">
         <div class="modal-header">
-            <h3>Cadastrar Novo Fisioterapeuta</h3>
+            <h3>Cadastrar Novo Usuário</h3>
             <button class="modal-close" onclick="fecharModal('modalNovoUsuario')">
                 <i class="fas fa-times"></i>
             </button>
         </div>
         
-        <form id="formNovoUsuario" class="modal-form">
+        <form id="formNovoUsuario" class="modal-form" method="POST" action="/admin/users/create">
             <div class="form-grid-modal">
                 <div class="form-grupo">
-                    <label for="nome">Nome Completo *</label>
-                    <input type="text" id="nome" name="nome" placeholder="Ex: Dr. João Silva" required>
+                    <label for="nome" class="required">Nome Completo</label>
+                    <input type="text" id="nome" name="name" placeholder="Ex: Dr. João Silva" required maxlength="255">
                 </div>
                 
                 <div class="form-grupo">
-                    <label for="email">Email *</label>
-                    <input type="email" id="email" name="email" placeholder="joao@clinica.com.br" required>
+                    <label for="email" class="required">Email</label>
+                    <input type="email" id="email" name="email" placeholder="joao@clinica.com.br" required maxlength="255">
+                </div>
+                
+                <div class="form-grupo">
+                    <label for="telefone">Telefone</label>
+                    <input type="tel" id="telefone" name="phone" placeholder="(11) 99999-9999" maxlength="20">
                 </div>
                 
                 <div class="form-grupo">
                     <label for="crefito">CREFITO</label>
-                    <input type="text" id="crefito" name="crefito" placeholder="Ex: 123456-F">
+                    <input type="text" id="crefito" name="crefito" placeholder="Ex: 123456-F" maxlength="20">
+                </div>
+                
+                <div class="form-grupo">
+                    <label for="senha" class="required">Senha Temporária</label>
+                    <div class="password-input-group">
+                        <input type="password" id="senha" name="password" required minlength="8" placeholder="Mínimo 8 caracteres">
+                        <button type="button" class="password-toggle" onclick="togglePasswordModal('senha')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="form-grupo">
+                    <label for="senha_confirmar" class="required">Confirmar Senha</label>
+                    <div class="password-input-group">
+                        <input type="password" id="senha_confirmar" name="password_confirm" required minlength="8">
+                        <button type="button" class="password-toggle" onclick="togglePasswordModal('senha_confirmar')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="form-grupo">
+                    <label for="role" class="required">Perfil de Acesso</label>
+                    <select id="role" name="role" required>
+                        <option value="">Selecione um perfil</option>
+                        <option value="usuario">Fisioterapeuta</option>
+                        <option value="admin">Administrador</option>
+                    </select>
                 </div>
                 
                 <div class="form-grupo">
                     <label for="especialidade">Especialidade</label>
                     <select id="especialidade" name="especialidade">
                         <option value="">Selecione...</option>
-                        <option value="ortopedica">Fisioterapia Ortopédica</option>
-                        <option value="neurologica">Fisioterapia Neurológica</option>
-                        <option value="respiratoria">Fisioterapia Respiratória</option>
-                        <option value="geriatrica">Fisioterapia Geriátrica</option>
-                        <option value="pediatrica">Fisioterapia Pediátrica</option>
-                        <option value="esportiva">Fisioterapia Esportiva</option>
-                    </select>
-                </div>
-                
-                <div class="form-grupo">
-                    <label for="telefone">Telefone</label>
-                    <input type="tel" id="telefone" name="telefone" placeholder="(11) 99999-9999">
-                </div>
-                
-                <div class="form-grupo">
-                    <label for="role">Perfil *</label>
-                    <select id="role" name="role" required>
-                        <option value="professional">Fisioterapeuta</option>
-                        <option value="admin">Administrador</option>
+                        <option value="ortopedica">Ortopédica</option>
+                        <option value="neurologica">Neurológica</option>
+                        <option value="respiratoria">Respiratória</option>
+                        <option value="geriatrica">Geriátrica</option>
+                        <option value="pediatrica">Pediátrica</option>
+                        <option value="esportiva">Esportiva</option>
                     </select>
                 </div>
             </div>
@@ -238,9 +276,15 @@
             
             <div class="form-opcoes">
                 <label class="checkbox-custom">
-                    <input type="checkbox" id="enviarEmail" name="enviar_email" checked>
+                    <input type="checkbox" id="forcarMudancaSenha" name="force_password_change" checked>
                     <span class="checkmark"></span>
-                    Enviar email de boas-vindas com dados de acesso
+                    Forçar alteração de senha no primeiro login
+                </label>
+                
+                <label class="checkbox-custom">
+                    <input type="checkbox" id="enviarEmail" name="send_welcome_email" checked>
+                    <span class="checkmark"></span>
+                    Enviar email de boas-vindas
                 </label>
             </div>
             
@@ -250,7 +294,7 @@
                 </button>
                 <button type="submit" class="btn-fisio btn-primario">
                     <i class="fas fa-user-plus"></i>
-                    Cadastrar Fisioterapeuta
+                    Cadastrar Usuário
                 </button>
             </div>
         </form>
@@ -453,7 +497,7 @@
     background: linear-gradient(135deg, #7c3aed, #a78bfa);
 }
 
-.avatar-circulo.professional {
+.avatar-circulo.usuario {
     background: linear-gradient(135deg, #059669, #10b981);
 }
 
@@ -583,22 +627,52 @@
     color: white;
 }
 
-.btn-acao.pausar {
+.btn-acao.permissoes {
+    background: var(--cinza-claro);
+    color: var(--azul-saude);
+}
+
+.btn-acao.permissoes:hover {
+    background: var(--azul-saude);
+    color: white;
+}
+
+.btn-acao.logs {
+    background: var(--cinza-claro);
+    color: #6366f1;
+}
+
+.btn-acao.logs:hover {
+    background: #6366f1;
+    color: white;
+}
+
+.btn-acao.lgpd {
+    background: var(--cinza-claro);
+    color: #8b5cf6;
+}
+
+.btn-acao.lgpd:hover {
+    background: #8b5cf6;
+    color: white;
+}
+
+.btn-acao.bloquear {
     background: var(--cinza-claro);
     color: var(--alerta);
 }
 
-.btn-acao.pausar:hover {
+.btn-acao.bloquear:hover {
     background: var(--alerta);
     color: white;
 }
 
-.btn-acao.ativar {
+.btn-acao.desbloquear {
     background: var(--cinza-claro);
     color: var(--sucesso);
 }
 
-.btn-acao.ativar:hover {
+.btn-acao.desbloquear:hover {
     background: var(--sucesso);
     color: white;
 }
@@ -654,11 +728,9 @@
 
 .modal-container {
     background: white;
-    border-radius: 20px;
-    max-width: 600px;
+    border-radius: 16px;
+    max-width: 500px;
     width: 90%;
-    max-height: 90vh;
-    overflow-y: auto;
     box-shadow: var(--sombra-flutuante);
 }
 
@@ -690,14 +762,44 @@
 }
 
 .modal-form {
-    padding: 32px;
+    padding: 20px;
+}
+
+.form-section-modal {
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--cinza-medio);
+}
+
+.form-section-modal:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.section-title-modal {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--cinza-escuro);
+    margin-bottom: 16px;
+}
+
+.section-title-modal i {
+    color: var(--azul-saude);
+    font-size: 18px;
+}
+
+.form-grupo-full {
+    grid-column: 1 / -1;
 }
 
 .form-grid-modal {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-    margin-bottom: 20px;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
 }
 
 .form-grupo {
@@ -709,17 +811,52 @@
 .form-grupo label {
     font-weight: 600;
     color: var(--cinza-escuro);
-    font-size: 14px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 6px;
+}
+
+.form-grupo label.required::after {
+    content: '*';
+    color: var(--erro);
+    margin-left: 4px;
+}
+
+.password-input-group {
+    position: relative;
+    display: flex;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--cinza-medio);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: color 0.2s ease;
+}
+
+.password-toggle:hover {
+    color: var(--cinza-escuro);
 }
 
 .form-grupo input,
 .form-grupo select,
 .form-grupo textarea {
-    padding: 12px 16px;
+    padding: 10px 12px;
     border: 1px solid var(--cinza-medio);
-    border-radius: 8px;
+    border-radius: 6px;
     font-size: 14px;
     transition: var(--transicao);
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .form-grupo input:focus,
@@ -730,15 +867,18 @@
 }
 
 .form-opcoes {
-    margin: 20px 0;
+    margin: 16px 0;
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
 }
 
 .checkbox-custom {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 13px;
     color: var(--cinza-escuro);
 }
 
@@ -773,8 +913,8 @@
     display: flex;
     gap: 12px;
     justify-content: flex-end;
-    margin-top: 24px;
-    padding-top: 20px;
+    margin-top: 20px;
+    padding-top: 16px;
     border-top: 1px solid var(--cinza-medio);
 }
 
@@ -821,19 +961,26 @@
 </style>
 
 <script>
-// Filtrar usuários
+// Filtros dinâmicos funcionais
 function filtrarUsuarios() {
     const status = document.getElementById('filtroStatus').value;
     const role = document.getElementById('filtroRole').value;
+    const especialidade = document.getElementById('filtroEspecialidade')?.value || '';
+    const busca = document.getElementById('buscaUsuario').value.toLowerCase();
+    
     const usuarios = document.querySelectorAll('.usuario-item');
     let contador = 0;
     
     usuarios.forEach(usuario => {
         const usuarioStatus = usuario.dataset.status;
         const usuarioRole = usuario.dataset.role;
+        const usuarioTexto = usuario.textContent.toLowerCase();
         
-        const mostrar = (!status || usuarioStatus === status) && 
-                       (!role || usuarioRole === role);
+        const statusMatch = !status || usuarioStatus === status;
+        const roleMatch = !role || usuarioRole === role;
+        const buscaMatch = !busca || usuarioTexto.includes(busca);
+        
+        const mostrar = statusMatch && roleMatch && buscaMatch;
         
         usuario.style.display = mostrar ? 'flex' : 'none';
         if (mostrar) contador++;
@@ -842,24 +989,10 @@ function filtrarUsuarios() {
     document.getElementById('contadorUsuarios').textContent = `(${contador} usuários)`;
 }
 
-// Buscar usuários
+// Busca em tempo real
 function buscarUsuarios() {
-    const termo = document.getElementById('buscaUsuario').value.toLowerCase();
-    const usuarios = document.querySelectorAll('.usuario-item');
-    let contador = 0;
-    
-    usuarios.forEach(usuario => {
-        const nome = usuario.querySelector('.usuario-nome').textContent.toLowerCase();
-        const email = usuario.querySelector('.usuario-email').textContent.toLowerCase();
-        const crefito = usuario.querySelector('.usuario-crefito')?.textContent.toLowerCase() || '';
-        
-        const mostrar = nome.includes(termo) || email.includes(termo) || crefito.includes(termo);
-        
-        usuario.style.display = mostrar ? 'flex' : 'none';
-        if (mostrar) contador++;
-    });
-    
-    document.getElementById('contadorUsuarios').textContent = `(${contador} usuários)`;
+    clearTimeout(window.searchTimeout);
+    window.searchTimeout = setTimeout(filtrarUsuarios, 300);
 }
 
 // Modal
@@ -868,27 +1001,80 @@ function abrirModalNovoUsuario() {
     document.body.style.overflow = 'hidden';
 }
 
+// Carregar página
+document.addEventListener('DOMContentLoaded', function() {
+    // Aplicar filtros salvos se existirem
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('status')) document.getElementById('filtroStatus').value = params.get('status');
+    if (params.get('role')) document.getElementById('filtroRole').value = params.get('role');
+    if (params.get('search')) document.getElementById('buscaUsuario').value = params.get('search');
+    
+    // Aplicar filtros iniciais
+    if (params.toString()) filtrarUsuarios();
+});
+
+// Botões de ações rápidas funcionais
+function abrirModalPermissoes(userId) {
+    window.location.href = `/admin/users/permissions?id=${userId}`;
+}
+
+function abrirModalLogs(userId) {
+    window.location.href = `/admin/users/logs?id=${userId}`;
+}
+
+function abrirModalLGPD(userId) {
+    window.location.href = `/admin/users/privacy?id=${userId}`;
+}
+
 function fecharModal(modalId) {
     document.getElementById(modalId).style.display = 'none';
     document.body.style.overflow = 'auto';
 }
 
-// Ações dos usuários
+// Ações dos usuários funcionais
 function editarUsuario(id) {
-    mostrarAlerta('Função de edição será implementada', 'info');
+    window.location.href = `/admin/users/edit?id=${id}`;
 }
 
-function visualizarUsuario(id) {
-    mostrarAlerta('Visualização de perfil será implementada', 'info');
+function gerenciarPermissoes(id) {
+    // Abrir modal de permissões
+    abrirModalPermissoes(id);
+}
+
+function visualizarLogs(id) {
+    // Abrir modal de logs
+    abrirModalLogs(id);
+}
+
+function gerenciarLGPD(id) {
+    // Abrir modal LGPD
+    abrirModalLGPD(id);
 }
 
 function alterarStatusUsuario(id, status) {
     const novoStatus = status === 'active' ? 'inactive' : 'active';
-    const acao = novoStatus === 'active' ? 'ativar' : 'desativar';
+    const acao = novoStatus === 'active' ? 'desbloquear' : 'bloquear';
     
     if (confirm(`Confirma ${acao} este usuário?`)) {
-        mostrarAlerta(`Usuário ${acao === 'ativar' ? 'ativado' : 'desativado'} com sucesso!`, 'sucesso');
-        // Implementar chamada AJAX aqui
+        fetch('/admin/users/toggle-status', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ id: id, status: novoStatus })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mostrarAlerta(`Usuário ${acao === 'desbloquear' ? 'desbloqueado' : 'bloqueado'} com sucesso!`, 'sucesso');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                mostrarAlerta(data.message || 'Erro ao alterar status', 'erro');
+            }
+        })
+        .catch(error => {
+            mostrarAlerta('Erro de comunicação com o servidor', 'erro');
+        });
     }
 }
 
@@ -911,25 +1097,101 @@ function alternarVisualizacao() {
     mostrarAlerta('Visualização em cards será implementada', 'info');
 }
 
+// Funções auxiliares do modal
+function togglePasswordModal(inputId) {
+    const input = document.getElementById(inputId);
+    const button = input.nextElementSibling;
+    const icon = button.querySelector('i');
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'fas fa-eye-slash';
+    } else {
+        input.type = 'password';
+        icon.className = 'fas fa-eye';
+    }
+}
+
+function formatarTelefone(input) {
+    let value = input.value.replace(/\D/g, '');
+    
+    if (value.length <= 11) {
+        value = value.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+        value = value.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+        value = value.replace(/(\d{2})(\d{4})/, '($1) $2');
+        value = value.replace(/(\d{2})/, '($1');
+    }
+    
+    input.value = value;
+}
+
 // Submissão do formulário
 document.getElementById('formNovoUsuario').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    // Validação básica
+    // Validação avançada antes do envio
+    const senha = document.getElementById('senha').value;
+    const senhaConfirmar = document.getElementById('senha_confirmar').value;
     const nome = document.getElementById('nome').value;
     const email = document.getElementById('email').value;
+    const role = document.getElementById('role').value;
     
-    if (!nome || !email) {
+    if (!nome || !email || !senha || !senhaConfirmar || !role) {
+        e.preventDefault();
         mostrarAlerta('Preencha todos os campos obrigatórios', 'aviso');
         return;
     }
     
-    // Simular cadastro
-    mostrarAlerta('Fisioterapeuta cadastrado com sucesso!', 'sucesso');
-    fecharModal('modalNovoUsuario');
+    if (senha !== senhaConfirmar) {
+        e.preventDefault();
+        mostrarAlerta('As senhas não coincidem', 'erro');
+        return;
+    }
     
-    // Limpar formulário
-    this.reset();
+    if (senha.length < 8) {
+        e.preventDefault();
+        mostrarAlerta('A senha deve ter pelo menos 8 caracteres', 'aviso');
+        return;
+    }
+    
+    // Validar email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        e.preventDefault();
+        mostrarAlerta('Digite um email válido', 'aviso');
+        return;
+    }
+    
+    // Se chegou até aqui, submeter o formulário
+    const submitBtn = this.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Criando...';
+});
+
+// Adicionar eventos ao carregar a página
+document.addEventListener('DOMContentLoaded', function() {
+    // Formatação de telefone
+    const telefoneInput = document.getElementById('telefone');
+    if (telefoneInput) {
+        telefoneInput.addEventListener('input', function(e) {
+            formatarTelefone(e.target);
+        });
+    }
+    
+    // Validação de confirmação de senha
+    const senhaConfirmar = document.getElementById('senha_confirmar');
+    if (senhaConfirmar) {
+        senhaConfirmar.addEventListener('input', function(e) {
+            const senha = document.getElementById('senha').value;
+            const confirmar = e.target.value;
+            
+            if (confirmar && senha !== confirmar) {
+                e.target.setCustomValidity('As senhas não coincidem');
+                e.target.style.borderColor = 'var(--erro)';
+            } else {
+                e.target.setCustomValidity('');
+                e.target.style.borderColor = '';
+            }
+        });
+    }
 });
 
 // Fechar modal clicando fora
