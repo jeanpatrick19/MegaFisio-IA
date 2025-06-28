@@ -1347,9 +1347,71 @@ function mostrarAlerta(mensagem, tipo = 'sucesso') {
     }, 3000);
 }
 
+// Salvar configuração do robô ao mudar modelo ou limite
+async function salvarConfigRobo(robotId, tipo, valor) {
+    try {
+        const formData = new FormData();
+        formData.append('robot_id', robotId);
+        formData.append('csrf_token', document.querySelector('meta[name="csrf-token"]')?.content || '');
+        
+        // Pegar valores atuais
+        const modeloSelect = document.querySelector(`.modelo-select[data-robo="${robotId}"]`);
+        const limiteInput = document.querySelector(`.limite-input[data-robo="${robotId}"]`);
+        
+        formData.append('gpt_model', modeloSelect ? modeloSelect.value : 'gpt-4o-mini');
+        formData.append('daily_limit', limiteInput ? limiteInput.value : '50');
+        
+        const response = await fetch('/ai/save-robot-config', {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: new URLSearchParams(formData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            mostrarAlerta('Configuração do robô salva com sucesso!', 'sucesso');
+        } else {
+            mostrarAlerta(result.error || 'Erro ao salvar configuração', 'erro');
+        }
+    } catch (error) {
+        console.error('Erro ao salvar configuração:', error);
+        mostrarAlerta('Erro ao salvar configuração do robô', 'erro');
+    }
+}
+
 // Inicializar
 document.addEventListener('DOMContentLoaded', function() {
     atualizarStats();
+    
+    // Adicionar event listeners para modelo-select
+    document.querySelectorAll('.modelo-select').forEach(select => {
+        select.addEventListener('change', function() {
+            const robotId = this.getAttribute('data-robo');
+            if (robotId) {
+                salvarConfigRobo(robotId, 'modelo', this.value);
+            }
+        });
+    });
+    
+    // Adicionar event listeners para limite-input
+    document.querySelectorAll('.limite-input').forEach(input => {
+        let timeout;
+        input.addEventListener('input', function() {
+            clearTimeout(timeout);
+            const robotId = this.getAttribute('data-robo');
+            const valor = this.value;
+            
+            // Debounce para evitar muitas requisições
+            timeout = setTimeout(() => {
+                if (robotId && valor) {
+                    salvarConfigRobo(robotId, 'limite', valor);
+                }
+            }, 500);
+        });
+    });
 });
 </script>
 

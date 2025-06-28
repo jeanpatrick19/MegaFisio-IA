@@ -1,5 +1,8 @@
 <?php if (!defined('PUBLIC_ACCESS')) die('Acesso negado'); ?>
 
+<!-- Meta tag CSRF -->
+<meta name="csrf-token" content="<?= $_SESSION['csrf_token'] ?? '' ?>">
+
 <!-- Título da Página -->
 <h1 class="titulo-pagina">Gestão de Prompts IA</h1>
 <p class="subtitulo-pagina-escuro">Configure e gerencie todos os prompts de inteligência artificial do sistema</p>
@@ -239,6 +242,7 @@
         <div class="modal-content-scroll">
             <form id="formPrompt" class="modal-content" action="#" method="post" onsubmit="return false;">
                 <input type="hidden" id="promptId" name="promptId">
+                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
                 
                 <div class="campos-grid">
                     <div class="campo-grupo">
@@ -1477,10 +1481,25 @@ function buscarPrompts() {
 
 // Modal Robô Dr. IA
 function abrirModalNovoPrompt() {
-    document.getElementById('modalPromptTitulo').textContent = '🤖 Criar Novo Robô Dr. IA';
-    document.getElementById('formPrompt').reset();
-    document.getElementById('promptId').value = '';
-    document.getElementById('categoriaCustom').style.display = 'none';
+    console.log('Abrindo modal novo prompt...');
+    
+    const modal = document.getElementById('modalPrompt');
+    const titulo = document.getElementById('modalPromptTitulo');
+    const form = document.getElementById('formPrompt');
+    
+    if (!modal) {
+        console.error('Modal não encontrado!');
+        return;
+    }
+    
+    if (titulo) titulo.textContent = '🤖 Criar Novo Robô Dr. IA';
+    if (form) form.reset();
+    
+    const promptId = document.getElementById('promptId');
+    if (promptId) promptId.value = '';
+    
+    const categoriaCustom = document.getElementById('categoriaCustom');
+    if (categoriaCustom) categoriaCustom.style.display = 'none';
     
     // Resetar preview do ícone
     const iconePreview = document.getElementById('iconePreview');
@@ -1489,13 +1508,17 @@ function abrirModalNovoPrompt() {
     }
     
     // Restaurar botão para "Criar"
-    const btnSubmit = document.querySelector('button[form="formPrompt"]');
+    const btnSubmit = document.querySelector('button[onclick="salvarRoboPrompt()"]');
     if (btnSubmit) {
         btnSubmit.innerHTML = '<i class="fas fa-robot"></i> Criar Robô Dr. IA';
+        btnSubmit.disabled = false;
     }
     
-    document.getElementById('modalPrompt').style.display = 'flex';
+    // Mostrar modal
+    modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
+    
+    console.log('Modal deve estar visível agora!');
 }
 
 function toggleCategoriaCustom() {
@@ -1865,47 +1888,34 @@ function editarPrompt(id) {
 }
 
 function testarPrompt(id) {
-    // Mapeamento de IDs para nomes dos robôs
-    const robotMap = {
-        1: 'autoritas',
-        2: 'acolhe',
-        3: 'fechador',
-        4: 'reab',
-        5: 'protoc',
-        6: 'edu',
-        7: 'cientifico',
-        8: 'injetaveis',
-        9: 'local',
-        10: 'recall',
-        11: 'evolucio',
-        12: 'legal',
-        13: 'contratus',
-        14: 'imago',
-        15: 'imaginario',
-        16: 'diagnostik',
-        17: 'integralis',
-        18: 'pop',
-        19: 'vigilantis',
-        20: 'formula-oral',
-        21: 'contrology',
-        22: 'posturalis',
-        23: 'peritus'
-    };
+    console.log('Testando robô ID:', id);
     
-    const robotName = robotMap[id];
-    
-    if (robotName) {
-        if (robotName === 'autoritas' || robotName === 'acolhe' || robotName === 'fechador' || robotName === 'reab' || robotName === 'protoc') {
-            mostrarAlerta('Redirecionando para ' + getRobotNameById(id) + '...', 'info');
-            setTimeout(() => {
-                window.location.href = '/ai/' + robotName;
-            }, 800);
-        } else {
-            mostrarAlerta('Página do ' + getRobotNameById(id) + ' em desenvolvimento...', 'info');
+    // Fazer requisição AJAX para testar o robô
+    fetch(`/admin/ai/test-robot?robot_id=${id}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json'
         }
-    } else {
-        mostrarAlerta('Robô não encontrado', 'erro');
-    }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarAlerta(data.message, 'sucesso');
+            
+            // Se há redirect, navegar para a página
+            if (data.redirect) {
+                setTimeout(() => {
+                    window.location.href = data.redirect;
+                }, 800);
+            }
+        } else {
+            mostrarAlerta(data.message || 'Erro ao testar robô', 'erro');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarAlerta('Erro de conexão ao testar robô', 'erro');
+    });
 }
 
 function getRobotNameById(id) {
@@ -1939,53 +1949,36 @@ function getRobotNameById(id) {
 
 function duplicarPrompt(id) {
     if (confirm('Deseja duplicar este robô Dr. IA?')) {
-        // Buscar dados do robô atual
-        const robotCard = document.querySelector(`[data-prompt-id="${id}"]`);
-        if (robotCard) {
-            const nome = robotCard.querySelector('.prompt-nome')?.textContent || 'Robô';
-            const descricao = robotCard.querySelector('.prompt-descricao')?.textContent || '';
-            const categoria = robotCard.getAttribute('data-category') || 'geral';
-            
-            // Criar novo robô com nome duplicado
-            const novoNome = nome + ' (Cópia)';
-            
-            // Adicionar novo card na interface
-            const novoId = Date.now();
-            const novoCard = robotCard.cloneNode(true);
-            novoCard.setAttribute('data-prompt-id', novoId);
-            novoCard.querySelector('.prompt-nome').textContent = novoNome;
-            novoCard.querySelector('.prompt-status').className = 'prompt-status status-draft';
-            novoCard.querySelector('.prompt-status').textContent = 'Rascunho';
-            
-            // Atualizar botões de ação
-            const botoes = novoCard.querySelectorAll('button[onclick]');
-            botoes.forEach(botao => {
-                const onclick = botao.getAttribute('onclick');
-                if (onclick) {
-                    botao.setAttribute('onclick', onclick.replace(new RegExp(id, 'g'), novoId));
-                }
-            });
-            
-            // Resetar estatísticas
-            const stats = novoCard.querySelectorAll('.stat-prompt-numero');
-            if (stats[0]) stats[0].textContent = '0';
-            if (stats[1]) stats[1].textContent = '0%';
-            
-            // Adicionar na lista
-            document.getElementById('promptsLista').insertBefore(novoCard, robotCard.nextSibling);
-            
-            mostrarAlerta(`Robô "${nome}" duplicado com sucesso como "${novoNome}"!`, 'sucesso');
-            
-            // Atualizar contador
-            const contador = document.getElementById('contadorPrompts');
-            if (contador) {
-                const match = contador.textContent.match(/\d+/);
-                if (match) {
-                    const total = parseInt(match[0]) + 1;
-                    contador.textContent = `(${total} robôs Dr. IA)`;
-                }
+        console.log('Duplicando robô ID:', id);
+        
+        // Preparar dados para envio
+        const formData = new FormData();
+        formData.append('robot_id', id);
+        formData.append('csrf_token', document.querySelector('input[name="csrf_token"]')?.value || '');
+        
+        // Fazer requisição AJAX para duplicar o robô
+        fetch('/admin/ai/duplicate-robot', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mostrarAlerta(data.message, 'sucesso');
+                
+                // Recarregar a página para mostrar o robô duplicado
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+                
+            } else {
+                mostrarAlerta(data.message || 'Erro ao duplicar robô', 'erro');
             }
-        }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            mostrarAlerta('Erro de conexão ao duplicar robô', 'erro');
+        });
     }
 }
 
@@ -1994,113 +1987,71 @@ function alterarStatusPrompt(id, status) {
     const acao = novoStatus === 'active' ? 'ativar' : 'desativar';
     
     if (confirm(`Confirma ${acao} este robô Dr. IA?`)) {
+        console.log('Alterando status do robô ID:', id, 'para:', novoStatus);
+        
         // Preparar dados para envio
         const formData = new FormData();
-        formData.append('action', 'update_status');
         formData.append('robot_id', id);
-        formData.append('new_status', novoStatus);
-        formData.append('csrf_token', document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '');
+        formData.append('csrf_token', document.querySelector('input[name="csrf_token"]')?.value || '');
         
         // Fazer requisição AJAX
-        fetch('/ai/update-robot-status', {
+        fetch('/admin/ai/toggle-robot-status', {
             method: 'POST',
             body: formData
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                mostrarAlerta(`Robô Dr. IA ${acao === 'ativar' ? 'ativado' : 'desativado'} com sucesso!`, 'sucesso');
+                mostrarAlerta(data.message, 'sucesso');
                 
-                // Atualizar a interface imediatamente
-                const robotCard = document.querySelector(`[data-prompt-id="${id}"]`);
-                if (robotCard) {
-                    const statusElement = robotCard.querySelector('.prompt-status');
-                    const botaoStatus = robotCard.querySelector(`button[onclick*="alterarStatusPrompt(${id}"]`);
-                    
-                    if (statusElement) {
-                        statusElement.className = `prompt-status status-${novoStatus}`;
-                        statusElement.textContent = novoStatus === 'active' ? 'Ativo' : 'Inativo';
-                    }
-                    
-                    if (botaoStatus) {
-                        botaoStatus.className = `btn-acao ${novoStatus === 'active' ? 'pausar' : 'ativar'}`;
-                        botaoStatus.innerHTML = `<i class="fas fa-${novoStatus === 'active' ? 'pause' : 'play'}"></i>`;
-                        botaoStatus.setAttribute('data-tooltip', novoStatus === 'active' ? 'Desativar' : 'Ativar');
-                        botaoStatus.setAttribute('onclick', `alterarStatusPrompt(${id}, '${novoStatus}')`);
-                    }
-                }
-                
-                // Atualizar estatísticas
+                // Recarregar a página para mostrar as mudanças
                 setTimeout(() => {
-                    filtrarPrompts();
-                }, 100);
+                    window.location.reload();
+                }, 1000);
+                
             } else {
                 mostrarAlerta(data.message || 'Erro ao alterar status do robô', 'erro');
             }
         })
         .catch(error => {
             console.error('Erro:', error);
-            mostrarAlerta('Erro de conexão. Tente novamente.', 'erro');
+            mostrarAlerta('Erro de conexão ao alterar status', 'erro');
         });
     }
 }
 
 function confirmarExclusaoPrompt(id, nome) {
     if (confirm(`ATENÇÃO: Deseja excluir permanentemente o robô "${nome}"?\n\nEsta ação não pode ser desfeita!`)) {
-        // Remover card da interface
-        const robotCard = document.querySelector(`[data-prompt-id="${id}"]`);
-        if (robotCard) {
-            // Adicionar animação de saída
-            robotCard.style.transition = 'all 0.3s ease';
-            robotCard.style.opacity = '0';
-            robotCard.style.transform = 'scale(0.8)';
-            
-            setTimeout(() => {
-                robotCard.remove();
+        console.log('Deletando robô ID:', id);
+        
+        // Preparar dados para envio
+        const formData = new FormData();
+        formData.append('robot_id', id);
+        formData.append('csrf_token', document.querySelector('input[name="csrf_token"]')?.value || '');
+        
+        // Fazer requisição AJAX para deletar o robô
+        fetch('/admin/ai/delete-robot', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mostrarAlerta(data.message, 'sucesso');
                 
-                // Atualizar contador
-                const contador = document.getElementById('contadorPrompts');
-                if (contador) {
-                    const match = contador.textContent.match(/\d+/);
-                    if (match) {
-                        const total = Math.max(0, parseInt(match[0]) - 1);
-                        contador.textContent = `(${total} robôs Dr. IA)`;
-                    }
-                }
+                // Recarregar a página para mostrar as mudanças
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
                 
-                // Atualizar estatísticas
-                const totalPromptsEl = document.getElementById('totalPrompts');
-                if (totalPromptsEl) {
-                    const totalAtual = parseInt(totalPromptsEl.textContent) || 0;
-                    totalPromptsEl.textContent = Math.max(0, totalAtual - 1);
-                }
-                
-                // Se status era ativo, atualizar contador de ativos
-                if (robotCard.getAttribute('data-status') === 'active') {
-                    const promptsAtivosEl = document.getElementById('promptsAtivos');
-                    if (promptsAtivosEl) {
-                        const ativosAtual = parseInt(promptsAtivosEl.textContent) || 0;
-                        promptsAtivosEl.textContent = Math.max(0, ativosAtual - 1);
-                    }
-                }
-                
-                mostrarAlerta(`Robô "${nome}" excluído permanentemente!`, 'sucesso');
-                
-                // Verificar se ficou vazio
-                const promptsRestantes = document.querySelectorAll('.prompt-item');
-                if (promptsRestantes.length === 0) {
-                    document.getElementById('promptsLista').innerHTML = `
-                        <div class="lista-vazia">
-                            <i class="fas fa-robot"></i>
-                            <p>Nenhum robô Dr. IA cadastrado</p>
-                            <button class="btn-fisio btn-primario" onclick="abrirModalNovoPrompt()">
-                                <i class="fas fa-plus"></i> Criar Primeiro Robô
-                            </button>
-                        </div>
-                    `;
-                }
-            }, 300);
-        }
+            } else {
+                mostrarAlerta(data.message || 'Erro ao deletar robô', 'erro');
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            mostrarAlerta('Erro de conexão ao deletar robô', 'erro');
+        });
     }
 }
 
@@ -2237,6 +2188,44 @@ function exportarPDF() {
             th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
             th { background-color: #1976d2; color: white; }
             tr:nth-child(even) { background-color: #f2f2f2; }
+        /* Alertas flutuantes */
+        .alerta-flutuante {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 16px 24px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            z-index: 10000;
+        }
+        
+        .alerta-flutuante.show {
+            transform: translateX(0);
+        }
+        
+        .alerta-flutuante.sucesso {
+            border-left: 4px solid var(--sucesso);
+            color: var(--sucesso);
+        }
+        
+        .alerta-flutuante.erro {
+            border-left: 4px solid var(--vermelho-erro);
+            color: var(--vermelho-erro);
+        }
+        
+        .alerta-flutuante i {
+            font-size: 20px;
+        }
+        
+        .alerta-flutuante span {
+            color: var(--cinza-escuro);
+        }
         </style>
     </head>
     <body>
@@ -2300,21 +2289,35 @@ function testarPromptAtual() {
 }
 
 // Sliders
-document.getElementById('temperatura').addEventListener('input', function() {
-    document.getElementById('temperaturaValor').textContent = this.value;
-});
+const temperaturaSlider = document.getElementById('temperatura');
+const topPSlider = document.getElementById('topP');
 
-document.getElementById('topP').addEventListener('input', function() {
-    document.getElementById('topPValor').textContent = this.value;
-});
+if (temperaturaSlider) {
+    temperaturaSlider.addEventListener('input', function() {
+        const temperaturaValor = document.getElementById('temperaturaValor');
+        if (temperaturaValor) {
+            temperaturaValor.textContent = this.value;
+        }
+    });
+}
+
+if (topPSlider) {
+    topPSlider.addEventListener('input', function() {
+        const topPValor = document.getElementById('topPValor');
+        if (topPValor) {
+            topPValor.textContent = this.value;
+        }
+    });
+}
 
 // Função principal para salvar robô
 function salvarRoboPrompt() {
-    console.log('Salvando robô via botão!');
+    console.log('Salvando robô via AJAX!');
     
     const nome = document.getElementById('promptNome').value.trim();
     const icone = document.getElementById('promptIcone').value.trim();
     const categoria = document.getElementById('promptCategoria').value;
+    const categoriaCustom = document.getElementById('categoriaCustom').value.trim();
     const descricao = document.getElementById('promptDescricao').value.trim();
     const promptEspecializado = document.getElementById('promptEspecializado').value.trim();
     const status = document.getElementById('promptStatus').value;
@@ -2347,90 +2350,78 @@ function salvarRoboPrompt() {
         return;
     }
     
-    // Preparar dados do robô
-    const dadosRobo = {
-        id: promptId || Date.now(),
-        name: nome,
-        icon: icone,
-        category: categoria,
-        description: descricao,
-        prompt: promptEspecializado,
-        status: status,
-        limite_diario: limiteDiario || 100,
-        usage_count: 0,
-        success_rate: 0
-    };
-    
     // Verificar se é edição ou criação
     const isEdicao = !!promptId;
+    const endpoint = isEdicao ? '/admin/ai/edit-robot' : '/admin/ai/create-robot';
     
-    if (isEdicao) {
-        // Atualizar robô existente
-        const robotCard = document.querySelector(`[data-prompt-id="${promptId}"]`);
-        if (robotCard) {
-            // Atualizar dados na interface
-            robotCard.querySelector('.prompt-nome').textContent = nome;
-            robotCard.querySelector('.prompt-descricao').textContent = descricao;
-            robotCard.querySelector('.prompt-icone').className = `prompt-icone ${icone}`;
-            robotCard.setAttribute('data-category', categoria);
-            robotCard.setAttribute('data-status', status);
-            
-            // Atualizar status visual
-            const statusEl = robotCard.querySelector('.prompt-status');
-            statusEl.className = `prompt-status status-${status}`;
-            statusEl.textContent = status === 'active' ? 'Ativo' : (status === 'draft' ? 'Rascunho' : 'Inativo');
-            
-            // Atualizar categoria visual
-            const categoriaEl = robotCard.querySelector('.prompt-categoria');
-            if (categoriaEl) categoriaEl.textContent = categoria.charAt(0).toUpperCase() + categoria.slice(1);
-            
-            mostrarAlerta(`Robô "${nome}" atualizado com sucesso!`, 'sucesso');
-        }
-    } else {
-        // Criar novo robô
-        const novoCard = criarCardRobo(dadosRobo);
-        document.getElementById('promptsLista').insertBefore(novoCard, document.getElementById('promptsLista').firstChild);
-        
-        // Atualizar contadores
-        const contador = document.getElementById('contadorPrompts');
-        if (contador) {
-            const match = contador.textContent.match(/\d+/);
-            if (match) {
-                const total = parseInt(match[0]) + 1;
-                contador.textContent = `(${total} robôs Dr. IA)`;
-            }
-        }
-        
-        // Atualizar estatísticas
-        const totalPromptsEl = document.getElementById('totalPrompts');
-        if (totalPromptsEl) {
-            const totalAtual = parseInt(totalPromptsEl.textContent) || 0;
-            totalPromptsEl.textContent = totalAtual + 1;
-        }
-        
-        if (status === 'active') {
-            const promptsAtivosEl = document.getElementById('promptsAtivos');
-            if (promptsAtivosEl) {
-                const ativosAtual = parseInt(promptsAtivosEl.textContent) || 0;
-                promptsAtivosEl.textContent = ativosAtual + 1;
-            }
-        }
-        
-        mostrarAlerta(`Robô "${nome}" criado com sucesso!`, 'sucesso');
+    // Preparar dados para envio
+    const formData = new FormData();
+    if (isEdicao) formData.append('promptId', promptId);
+    formData.append('promptNome', nome);
+    formData.append('promptIcone', icone);
+    formData.append('promptCategoria', categoria);
+    if (categoriaCustom) formData.append('categoriaCustom', categoriaCustom);
+    formData.append('promptDescricao', descricao);
+    formData.append('promptEspecializado', promptEspecializado);
+    formData.append('promptStatus', status);
+    formData.append('promptLimiteDiario', limiteDiario || 100);
+    formData.append('csrf_token', document.querySelector('input[name="csrf_token"]')?.value || '');
+    
+    // Mostrar indicador de carregamento
+    const btnSubmit = document.querySelector('button[onclick="salvarRoboPrompt()"]');
+    const originalText = btnSubmit ? btnSubmit.innerHTML : '';
+    if (btnSubmit) {
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
     }
     
-    // Fechar modal e limpar
-    fecharModal('modalPrompt');
-    limparFormularioPrompt();
+    // Enviar para o backend
+    fetch(endpoint, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarAlerta(data.message, 'sucesso');
+            
+            // Fechar modal
+            fecharModal('modalPrompt');
+            limparFormularioPrompt();
+            
+            // Recarregar a página para mostrar os dados atualizados
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+            
+        } else {
+            mostrarAlerta(data.message || 'Erro ao salvar robô', 'erro');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarAlerta('Erro de conexão. Tente novamente.', 'erro');
+    })
+    .finally(() => {
+        // Restaurar botão
+        if (btnSubmit) {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = originalText;
+        }
+    });
 }
 
 // Submissão do formulário (backup)
-document.getElementById('formPrompt').addEventListener('submit', function(e) {
-    console.log('Formulário interceptado via submit!');
-    e.preventDefault();
-    e.stopPropagation();
-    salvarRoboPrompt();
-});
+document.addEventListener('DOMContentLoaded', function() {
+    const formPrompt = document.getElementById('formPrompt');
+    if (formPrompt) {
+        formPrompt.addEventListener('submit', function(e) {
+            console.log('Formulário interceptado via submit!');
+            e.preventDefault();
+            e.stopPropagation();
+            salvarRoboPrompt();
+        });
+    }
 });
 
 // Função para criar card de robô na interface
@@ -2497,6 +2488,109 @@ function criarCardRobo(dados) {
     return card;
 }
 
+// Função para salvar robô/prompt
+async function salvarRoboPrompt() {
+    const form = document.getElementById('formPrompt');
+    if (!form) {
+        console.error('Formulário não encontrado');
+        return;
+    }
+    
+    const formData = new FormData(form);
+    
+    // Adicionar CSRF token
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    formData.append('csrf_token', csrfToken);
+    
+    // Pegar os valores do formulário
+    const promptId = document.getElementById('promptId')?.value || '';
+    const isEdit = promptId !== '';
+    
+    // Preparar dados para envio
+    const data = {
+        id: promptId,
+        name: document.getElementById('promptNome')?.value || '',
+        icon: document.getElementById('promptIcone')?.value || 'fas fa-robot',
+        category: document.getElementById('promptCategoria')?.value || '',
+        description: document.getElementById('promptDescricao')?.value || '',
+        prompt: document.getElementById('promptEspecializado')?.value || '',
+        status: document.getElementById('promptStatus')?.value || 'active',
+        daily_limit: document.getElementById('promptLimiteDiario')?.value || '100',
+        csrf_token: csrfToken
+    };
+    
+    // Mostrar loading
+    const btnSubmit = form.querySelector('.btn-primario');
+    const originalText = btnSubmit?.innerHTML || '';
+    if (btnSubmit) {
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+    }
+    
+    try {
+        const url = isEdit ? '/admin/ai/edit-robot' : '/admin/ai/create-robot';
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: new URLSearchParams(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Mostrar mensagem de sucesso
+            mostrarAlerta(result.message || 'Robô salvo com sucesso!', 'sucesso');
+            
+            // Fechar modal
+            fecharModal('modalPrompt');
+            
+            // Recarregar lista de robôs
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            // Mostrar erro
+            mostrarAlerta(result.error || 'Erro ao salvar robô', 'erro');
+        }
+    } catch (error) {
+        console.error('Erro ao salvar:', error);
+        mostrarAlerta('Erro ao salvar robô. Tente novamente.', 'erro');
+    } finally {
+        // Restaurar botão
+        if (btnSubmit) {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = originalText;
+        }
+    }
+}
+
+// Função para mostrar alertas
+function mostrarAlerta(mensagem, tipo = 'sucesso') {
+    // Criar elemento de alerta
+    const alerta = document.createElement('div');
+    alerta.className = `alerta-flutuante ${tipo}`;
+    alerta.innerHTML = `
+        <i class="fas fa-${tipo === 'sucesso' ? 'check-circle' : 'exclamation-circle'}"></i>
+        <span>${mensagem}</span>
+    `;
+    
+    // Adicionar ao body
+    document.body.appendChild(alerta);
+    
+    // Animar entrada
+    setTimeout(() => alerta.classList.add('show'), 10);
+    
+    // Remover após 3 segundos
+    setTimeout(() => {
+        alerta.classList.remove('show');
+        setTimeout(() => alerta.remove(), 300);
+    }, 3000);
+}
+
 // Função para limpar formulário
 function limparFormularioPrompt() {
     document.getElementById('promptId').value = '';
@@ -2524,4 +2618,19 @@ document.addEventListener('click', function(e) {
         fecharModal(e.target.id);
     }
 });
+
+// Garantir que as funções estejam disponíveis globalmente
+window.abrirModalNovoPrompt = abrirModalNovoPrompt;
+window.editarPrompt = editarPrompt;
+window.testarPrompt = testarPrompt;
+window.duplicarPrompt = duplicarPrompt;
+window.alterarStatusPrompt = alterarStatusPrompt;
+window.confirmarExclusaoPrompt = confirmarExclusaoPrompt;
+window.salvarRoboPrompt = salvarRoboPrompt;
+window.fecharModal = fecharModal;
+window.limparFormularioPrompt = limparFormularioPrompt;
+window.toggleCategoriaCustom = toggleCategoriaCustom;
+window.abrirSeletorIcone = abrirSeletorIcone;
+window.selecionarIcone = selecionarIcone;
+window.sugerirIcone = sugerirIcone;
 </script>
