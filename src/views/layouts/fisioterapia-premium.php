@@ -265,6 +265,21 @@
             background: var(--dourado-premium);
             border-radius: 0 4px 4px 0;
         }
+        
+        /* Categoria de Menu */
+        .menu-categoria {
+            padding: 20px 20px 10px;
+            margin-top: 10px;
+        }
+        
+        .categoria-titulo {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            display: block;
+        }
 
         .menu-icone {
             width: 24px;
@@ -729,19 +744,64 @@
                     <?php endif; ?>
                 </div>
                 
-                <div class="menu-item">
-                    <?php if ($user['role'] === 'admin'): ?>
+                <!-- Assistentes IA -->
+                <?php if ($user['role'] !== 'admin'): ?>
+                    <div class="menu-categoria">
+                        <span class="categoria-titulo">Assistentes IA</span>
+                    </div>
+                    
+                    <?php
+                    // Buscar robôs disponíveis - primeiro mostrar todos para teste
+                    try {
+                        $stmt = $this->db->query("
+                            SELECT id, robot_name, robot_slug, robot_icon 
+                            FROM dr_ai_robots 
+                            WHERE is_active = TRUE 
+                            ORDER BY sort_order, robot_name
+                        ");
+                        $robots = $stmt->fetchAll();
+                        
+                        if (empty($robots)) {
+                            // Se não há robôs, mostrar menu padrão
+                            ?>
+                            <div class="menu-item">
+                                <a href="<?= BASE_URL ?>/ai" class="menu-link <?= $currentPage === 'ai' ? 'ativo' : '' ?>">
+                                    <div class="menu-icone"><i class="fas fa-brain"></i></div>
+                                    <span class="menu-texto" data-translate="Assistente IA">Assistente IA</span>
+                                </a>
+                            </div>
+                            <?php
+                        } else {
+                            foreach ($robots as $robot): 
+                    ?>
+                        <div class="menu-item">
+                            <a href="<?= BASE_URL ?>/ai/<?= htmlspecialchars($robot['robot_slug']) ?>" class="menu-link <?= $currentPage === $robot['robot_slug'] ? 'ativo' : '' ?>">
+                                <div class="menu-icone"><i class="<?= htmlspecialchars($robot['robot_icon']) ?>"></i></div>
+                                <span class="menu-texto"><?= htmlspecialchars($robot['robot_name']) ?></span>
+                            </a>
+                        </div>
+                    <?php 
+                            endforeach;
+                        }
+                    } catch (Exception $e) {
+                        // Fallback se houver erro
+                    ?>
+                        <div class="menu-item">
+                            <a href="<?= BASE_URL ?>/ai" class="menu-link <?= $currentPage === 'ai' ? 'ativo' : '' ?>">
+                                <div class="menu-icone"><i class="fas fa-brain"></i></div>
+                                <span class="menu-texto" data-translate="Assistente IA">Assistente IA</span>
+                            </a>
+                        </div>
+                    <?php } ?>
+                <?php else: ?>
+                    <!-- Admin mantém menu original -->
+                    <div class="menu-item">
                         <a href="<?= BASE_URL ?>/admin/ai" class="menu-link <?= $currentPage === 'ai' ? 'ativo' : '' ?>">
                             <div class="menu-icone"><i class="fas fa-brain"></i></div>
                             <span class="menu-texto" data-translate="IA do Sistema">IA do Sistema</span>
                         </a>
-                    <?php else: ?>
-                        <a href="<?= BASE_URL ?>/ai" class="menu-link <?= $currentPage === 'ai' ? 'ativo' : '' ?>">
-                            <div class="menu-icone"><i class="fas fa-brain"></i></div>
-                            <span class="menu-texto" data-translate="Assistente IA">Assistente IA</span>
-                        </a>
-                    <?php endif; ?>
-                </div>
+                    </div>
+                <?php endif; ?>
                 
                 <?php if ($user['role'] === 'admin'): ?>
                 <div class="menu-item">

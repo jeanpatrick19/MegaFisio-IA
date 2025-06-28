@@ -16,8 +16,8 @@ class SmartMigrationManager {
     }
     
     /**
-     * Método estático para usar em qualquer lugar do sistema
-     * Cria automaticamente tabelas/campos se não existirem
+     * Método estático otimizado para usar em qualquer lugar do sistema
+     * Verifica apenas campos específicos sem recriar toda a estrutura
      */
     public static function ensureSchema($tableName, $columns) {
         if (self::$instance === null) {
@@ -25,16 +25,24 @@ class SmartMigrationManager {
             self::$instance = new self($db);
         }
         
-        self::$instance->ensureTableStructure($tableName, $columns);
+        // Otimização: verificar apenas campos que não existem
+        self::$instance->ensureOnlyMissingColumns($tableName, $columns);
     }
     
     /**
-     * Método para garantir que uma tabela específica existe (chamado sob demanda)
+     * Método otimizado para garantir que uma tabela específica existe (chamado sob demanda)
+     * Não recria toda a estrutura, apenas campos que faltam
      */
     public static function ensureTable($tableName) {
         if (self::$instance === null) {
             $db = Database::getInstance();
             self::$instance = new self($db);
+        }
+        
+        // Cache simples para evitar verificações repetidas na mesma sessão
+        static $checkedTables = [];
+        if (isset($checkedTables[$tableName])) {
+            return; // Já verificado nesta sessão
         }
         
         // Definições COMPLETAS de todas as tabelas do sistema
@@ -399,7 +407,7 @@ class SmartMigrationManager {
                 'robot_slug' => 'VARCHAR(100) NOT NULL UNIQUE COMMENT "Slug para URL (ex: autoritas, acolhe)"',
                 'robot_title' => 'VARCHAR(200) NOT NULL COMMENT "Título completo para exibição"',
                 'robot_description' => 'TEXT NOT NULL COMMENT "Descrição do robô"',
-                'robot_specialty' => 'VARCHAR(200) NOT NULL COMMENT "Especialidade do robô"',
+                'robot_specialty' => 'TEXT NOT NULL COMMENT "Especialidade/Prompt do robô"',
                 'robot_icon' => 'VARCHAR(50) NOT NULL COMMENT "Classe do ícone FontAwesome"',
                 'robot_color' => 'VARCHAR(20) DEFAULT "#667eea" COMMENT "Cor do gradiente"',
                 'robot_category' => 'VARCHAR(50) NOT NULL COMMENT "Categoria do robô"',
@@ -417,7 +425,16 @@ class SmartMigrationManager {
         ];
         
         if (isset($tableDefinitions[$tableName])) {
-            self::$instance->ensureTableStructure($tableName, $tableDefinitions[$tableName]);
+            // Otimização: verificar apenas se a tabela existe, não recriar toda estrutura
+            if (!self::$instance->tableExists($tableName)) {
+                self::$instance->ensureTableStructure($tableName, $tableDefinitions[$tableName]);
+            } else {
+                // Tabela existe, verificar apenas campos que podem estar faltando
+                self::$instance->ensureOnlyMissingColumns($tableName, $tableDefinitions[$tableName]);
+            }
+            
+            // Marcar como verificado para evitar repetições na mesma sessão
+            $checkedTables[$tableName] = true;
         }
     }
     
@@ -430,7 +447,7 @@ class SmartMigrationManager {
             self::$instance = new self($db);
         }
         
-        self::$instance->addColumnIfNotExists($tableName, $columnName, $definition);
+        self::$instance->addOrModifyColumn($tableName, $columnName, $definition);
     }
     
     /**
@@ -465,6 +482,74 @@ class SmartMigrationManager {
             }
         }
         return true;
+    }
+    
+    /**
+     * Adiciona ou modifica campo (para garantir tipo correto)
+     */
+    private function addOrModifyColumn($table, $column, $definition) {
+        if (!$this->columnExists($table, $column)) {
+            // Campo não existe, criar
+            try {
+                $sql = "ALTER TABLE `{$table}` ADD COLUMN `{$column}` {$definition}";
+                $this->db->query($sql);
+                return true;
+            } catch (Exception $e) {
+                error_log("Erro ao adicionar coluna {$column} na tabela {$table}: " . $e->getMessage());
+                return false;
+            }
+        } else {
+            // Campo existe, verificar se precisa modificar tipo
+            try {
+                $sql = "ALTER TABLE `{$table}` MODIFY COLUMN `{$column}` {$definition}";
+                $this->db->query($sql);
+                return true;
+            } catch (Exception $e) {
+                error_log("Erro ao modificar coluna {$column} na tabela {$table}: " . $e->getMessage());
+                return false;
+            }
+        }
+    }
+    
+    /**
+     * Verifica se uma tabela existe
+     */
+    private function tableExists($tableName) {
+        try {
+            $stmt = $this->db->prepare("
+                SELECT COUNT(*) 
+                FROM INFORMATION_SCHEMA.TABLES 
+                WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
+            ");
+            $stmt->execute([$this->database, $tableName]);
+            return $stmt->fetchColumn() > 0;
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+    
+    /**
+     * Método otimizado que verifica apenas campos que não existem
+     * Evita recriar toda a estrutura da tabela
+     */
+    private function ensureOnlyMissingColumns($tableName, $columns) {
+        if (!$this->tableExists($tableName)) {
+            // Se a tabela não existe, criar ela completa
+            $this->ensureTableStructure($tableName, $columns);
+            return;
+        }
+        
+        // Tabela existe, verificar apenas campos que faltam
+        foreach ($columns as $columnName => $definition) {
+            // Pular índices e chaves especiais
+            if (strpos($columnName, 'INDEX') !== false || strpos($columnName, 'KEY') !== false) {
+                continue;
+            }
+            
+            if (!$this->columnExists($tableName, $columnName)) {
+                $this->addColumnIfNotExists($tableName, $columnName, $definition);
+            }
+        }
     }
     
     public function createAllTables() {
@@ -1570,16 +1655,9 @@ Seja preciso e baseie-se nas diretrizes oficiais da CID-10.',
                     (robot_name, robot_slug, robot_title, robot_description, robot_specialty, robot_icon, robot_color, robot_category, has_page, controller_method, route_path, sort_order) 
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON DUPLICATE KEY UPDATE 
-                        robot_title = VALUES(robot_title),
-                        robot_description = VALUES(robot_description),
-                        robot_specialty = VALUES(robot_specialty),
-                        robot_icon = VALUES(robot_icon),
-                        robot_color = VALUES(robot_color),
-                        robot_category = VALUES(robot_category),
                         has_page = VALUES(has_page),
                         controller_method = VALUES(controller_method),
                         route_path = VALUES(route_path),
-                        sort_order = VALUES(sort_order),
                         updated_at = NOW()
                 ");
                 $stmt->execute([
@@ -1591,10 +1669,10 @@ Seja preciso e baseie-se nas diretrizes oficiais da CID-10.',
                     $robot['robot_icon'],
                     $robot['robot_color'],
                     $robot['robot_category'],
-                    $robot['has_page'],
+                    isset($robot['has_page']) ? (int)$robot['has_page'] : 0,
                     $robot['controller_method'],
                     $robot['route_path'],
-                    $robot['sort_order']
+                    isset($robot['sort_order']) ? (int)$robot['sort_order'] : 0
                 ]);
             } catch (Exception $e) {
                 error_log("Erro ao inserir robô Dr. IA: " . $e->getMessage());
@@ -1876,7 +1954,7 @@ Seja preciso e baseie-se nas diretrizes oficiais da CID-10.',
             robot_slug VARCHAR(100) NOT NULL UNIQUE COMMENT 'Slug para URL',
             robot_title VARCHAR(200) NOT NULL COMMENT 'Título completo para exibição',
             robot_description TEXT NOT NULL COMMENT 'Descrição do robô',
-            robot_specialty VARCHAR(200) NOT NULL COMMENT 'Especialidade do robô',
+            robot_specialty TEXT NOT NULL COMMENT 'Especialidade/Prompt do robô',
             robot_icon VARCHAR(50) NOT NULL COMMENT 'Classe do ícone FontAwesome',
             robot_color VARCHAR(20) DEFAULT '#667eea' COMMENT 'Cor do gradiente',
             robot_category VARCHAR(50) NOT NULL COMMENT 'Categoria do robô',

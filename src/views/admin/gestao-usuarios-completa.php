@@ -1632,14 +1632,13 @@
 <script>
 // Função helper para construir URLs corretamente
 function buildApiUrl(route) {
+    console.log('DEBUG: window.location.pathname:', window.location.pathname);
+    console.log('DEBUG: window.location.href:', window.location.href);
+    
     const baseUrl = `${window.location.protocol}//${window.location.host}`;
-    if (window.location.pathname.includes('/public/')) {
-        // Se estamos no diretório public
-        return `${baseUrl}/public/index.php?route=${route}`;
-    } else {
-        // Se o index.php está na raiz
-        return `${baseUrl}/index.php?route=${route}`;
-    }
+    
+    // Sempre usar public/index.php para APIs
+    return `${baseUrl}/public/index.php?route=${route}`;
 }
 
 // Sistema de Abas
@@ -3543,6 +3542,8 @@ function editarUsuario(userId) {
 }
 
 function carregarDadosUsuario(userId) {
+    console.log('DEBUG: carregarDadosUsuario chamado com userId:', userId);
+    
     if (!userId || userId <= 0) {
         console.error('ID de usuário inválido:', userId);
         mostrarMensagemEdit('ID de usuário inválido', 'error');
@@ -3557,6 +3558,7 @@ function carregarDadosUsuario(userId) {
     }
     
     const url = buildApiUrl('admin/users/get-user-data') + `&id=${userId}`;
+    console.log('DEBUG: URL gerada:', url);
     
     fetch(url, {
         method: 'GET',
@@ -3566,10 +3568,22 @@ function carregarDadosUsuario(userId) {
         }
     })
         .then(response => {
+            console.log('DEBUG: Response status:', response.status);
+            console.log('DEBUG: Response headers:', response.headers);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            return response.json();
+            return response.text(); // Primeiro pegar como texto para debug
+        })
+        .then(text => {
+            console.log('DEBUG: Response text:', text);
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                console.error('DEBUG: Erro ao fazer parse do JSON:', e);
+                console.error('DEBUG: Texto recebido:', text);
+                throw new Error('Resposta inválida do servidor');
+            }
         })
         .then(data => {
             if (data.success) {
@@ -3704,6 +3718,10 @@ function salvarEdicaoUsuario(event) {
     // DEBUG: Verificar se user_id está sendo enviado
     const userId = formData.get('user_id');
     console.log('DEBUG: user_id no FormData:', userId);
+    console.log('DEBUG: Todos os dados do FormData:');
+    for (let [key, value] of formData.entries()) {
+        console.log(`  ${key}: ${value}`);
+    }
     
     if (!userId || userId === '' || userId === '0') {
         mostrarMensagemEdit('Erro: ID do usuário não encontrado. Feche e abra o modal novamente.', 'error');
@@ -4228,10 +4246,19 @@ document.addEventListener('DOMContentLoaded', function() {
             element.addEventListener('input', function(e) {
                 let value = e.target.value.replace(/\D/g, '');
                 if (value.length <= 11) {
-                    value = value.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
-                    value = value.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
-                    value = value.replace(/(\d{2})(\d{4})/, '($1) $2');
-                    value = value.replace(/(\d{2})/, '($1');
+                    if (value.length >= 11) {
+                        // Celular com 9 dígitos: (11) 99999-9999
+                        value = value.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+                    } else if (value.length >= 10) {
+                        // Fixo com 8 dígitos: (11) 9999-9999
+                        value = value.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+                    } else if (value.length >= 6) {
+                        // Parcial: (11) 9999
+                        value = value.replace(/(\d{2})(\d{4})/, '($1) $2');
+                    } else if (value.length >= 2) {
+                        // Apenas DDD: (11
+                        value = value.replace(/(\d{2})/, '($1) ');
+                    }
                 }
                 e.target.value = value;
             });

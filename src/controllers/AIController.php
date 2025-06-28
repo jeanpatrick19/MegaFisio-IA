@@ -1907,4 +1907,526 @@ class AIController extends BaseController {
             $this->json(['success' => false, 'message' => 'Erro interno do servidor'], 500);
         }
     }
+
+    /**
+     * Criar novo robô Dr. IA
+     * SOLUÇÃO DEFINITIVA para criação de robôs
+     */
+    public function createRobot() {
+        header('Content-Type: application/json');
+        
+        try {
+            $this->requireAuth();
+            
+            if ($this->user['role'] !== 'admin') {
+                echo json_encode(['success' => false, 'message' => 'Acesso negado']);
+                return;
+            }
+            
+            // Garantir que a tabela dr_ai_robots tem o campo robot_specialty como TEXT
+            require_once SRC_PATH . '/models/SmartMigrationManager.php';
+            SmartMigrationManager::ensureColumn('dr_ai_robots', 'robot_specialty', 'TEXT NOT NULL');
+            
+            // Receber dados do formulário
+            $nome = trim($_POST['promptNome'] ?? '');
+            $descricao = trim($_POST['promptDescricao'] ?? '');
+            $icone = trim($_POST['promptIcone'] ?? 'fas fa-robot');
+            $categoria = trim($_POST['promptCategoria'] ?? '');
+            $promptEspecializado = trim($_POST['promptEspecializado'] ?? '');
+            $status = $_POST['promptStatus'] ?? 'active';
+            
+            // Validações básicas
+            if (!$nome || !$descricao || !$promptEspecializado) {
+                echo json_encode(['success' => false, 'message' => 'Nome, descrição e prompt são obrigatórios']);
+                return;
+            }
+            
+            // Limitar campos VARCHAR para segurança
+            $nome = substr($nome, 0, 100);
+            $categoria = substr($categoria, 0, 50);
+            $icone = substr($icone, 0, 50);
+            $isActive = ($status === 'active') ? 1 : 0;
+            
+            // Gerar slug único
+            $slug = strtolower(trim($nome));
+            $slug = preg_replace('/[^a-z0-9-]/', '-', $slug);
+            $slug = preg_replace('/-+/', '-', $slug);
+            $slug = trim($slug, '-');
+            
+            // Verificar se slug já existe
+            $checkStmt = $this->db->prepare("SELECT id FROM dr_ai_robots WHERE robot_slug = ?");
+            $checkStmt->execute([$slug]);
+            if ($checkStmt->fetch()) {
+                $slug = $slug . '-' . time();
+            }
+            
+            // INSERT com transação
+            $this->db->beginTransaction();
+            
+            try {
+                $stmt = $this->db->prepare("
+                    INSERT INTO dr_ai_robots (
+                        robot_name, robot_slug, robot_title, robot_description, 
+                        robot_specialty, robot_icon, robot_category, is_active,
+                        created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+                ");
+                
+                $success = $stmt->execute([
+                    $nome, $slug, $nome, $descricao, $promptEspecializado,
+                    $icone, $categoria, $isActive
+                ]);
+                
+                if ($success) {
+                    $this->db->commit();
+                    echo json_encode(['success' => true, 'message' => 'Robô criado com sucesso!']);
+                } else {
+                    $this->db->rollback();
+                    echo json_encode(['success' => false, 'message' => 'Erro ao criar robô']);
+                }
+                
+            } catch (Exception $e) {
+                $this->db->rollback();
+                throw $e;
+            }
+            
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => 'Erro: ' . $e->getMessage()]);
+        }
+    }
+    
+    /**
+     * Editar robô Dr. IA - SOLUÇÃO DEFINITIVA
+     * Suporta duas operações:
+     * 1. action=get: Buscar dados do robô para edição
+     * 2. Sem action: Salvar alterações do robô
+     */
+    public function editRobot() {
+        header('Content-Type: application/json');
+        
+        try {
+            $this->requireAuth();
+            
+            if ($this->user['role'] !== 'admin') {
+                echo json_encode(['success' => false, 'message' => 'Acesso negado']);
+                return;
+            }
+            
+            // Se for apenas para buscar dados (sem promptId), retornar dados do robô
+            if (isset($_POST['action']) && $_POST['action'] === 'get' && isset($_POST['id'])) {
+                $robotId = intval($_POST['id']);
+                
+                if (!$robotId) {
+                    echo json_encode(['success' => false, 'message' => 'ID do robô é obrigatório']);
+                    return;
+                }
+                
+                // Garantir que a tabela existe
+                require_once SRC_PATH . '/models/SmartMigrationManager.php';
+                SmartMigrationManager::ensureTable('dr_ai_robots');
+                
+                // Buscar dados do robô
+                $stmt = $this->db->prepare("SELECT * FROM dr_ai_robots WHERE id = ?");
+                $stmt->execute([$robotId]);
+                $robot = $stmt->fetch();
+                
+                if (!$robot) {
+                    echo json_encode(['success' => false, 'message' => 'Robô não encontrado']);
+                    return;
+                }
+                
+                echo json_encode([
+                    'success' => true, 
+                    'robot' => $robot
+                ]);
+                return;
+            }
+            
+            // Receber TODOS os dados do formulário
+            $robotId = intval($_POST['promptId'] ?? 0);
+            $nome = trim($_POST['promptNome'] ?? '');
+            $descricao = trim($_POST['promptDescricao'] ?? '');
+            $icone = trim($_POST['promptIcone'] ?? '');
+            $categoria = trim($_POST['promptCategoria'] ?? '');
+            $promptEspecializado = trim($_POST['promptEspecializado'] ?? '');
+            $status = $_POST['promptStatus'] ?? 'active';
+            
+            // Validações básicas
+            if (!$robotId) {
+                echo json_encode(['success' => false, 'message' => 'ID do robô é obrigatório']);
+                return;
+            }
+            
+            if (!$nome || !$descricao || !$promptEspecializado) {
+                echo json_encode(['success' => false, 'message' => 'Nome, descrição e prompt são obrigatórios']);
+                return;
+            }
+            
+            // Limitar campos VARCHAR para segurança
+            $nome = substr($nome, 0, 100);
+            $categoria = substr($categoria, 0, 50);
+            $icone = substr($icone, 0, 50);
+            $isActive = ($status === 'active') ? 1 : 0;
+            
+            // Garantir que a tabela dr_ai_robots tem o campo robot_specialty como TEXT
+            require_once SRC_PATH . '/models/SmartMigrationManager.php';
+            SmartMigrationManager::ensureColumn('dr_ai_robots', 'robot_specialty', 'TEXT NOT NULL');
+            
+            // UPDATE definitivo com transação
+            $this->db->beginTransaction();
+            
+            try {
+                // UPDATE completo de uma vez só
+                $stmt = $this->db->prepare("
+                    UPDATE dr_ai_robots SET
+                        robot_name = ?, 
+                        robot_description = ?, 
+                        robot_specialty = ?,
+                        robot_icon = ?,
+                        robot_category = ?,
+                        is_active = ?,
+                        updated_at = NOW()
+                    WHERE id = ?
+                ");
+                
+                $success = $stmt->execute([
+                    $nome, 
+                    $descricao, 
+                    $promptEspecializado,
+                    $icone,
+                    $categoria,
+                    $isActive,
+                    $robotId
+                ]);
+                
+                if ($success && $stmt->rowCount() > 0) {
+                    $this->db->commit();
+                    echo json_encode(['success' => true, 'message' => 'Robô atualizado com sucesso!']);
+                } else if ($success && $stmt->rowCount() == 0) {
+                    $this->db->commit();
+                    echo json_encode(['success' => true, 'message' => 'Nenhuma alteração foi necessária']);
+                } else {
+                    $this->db->rollback();
+                    echo json_encode(['success' => false, 'message' => 'Erro ao atualizar robô']);
+                }
+                
+            } catch (Exception $e) {
+                $this->db->rollback();
+                throw $e;
+            }
+            
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => 'Erro: ' . $e->getMessage()]);
+        }
+    }
+    
+    // Método getRobot removido - funcionalidade integrada no editRobot
+    
+    /**
+     * Deletar robô Dr. IA
+     */
+    public function deleteRobot() {
+        $this->requireAuth();
+        $this->validateCSRF();
+        
+        // Verificar se é admin
+        if ($this->user['role'] !== 'admin') {
+            $this->json(['success' => false, 'message' => 'Acesso negado'], 403);
+            return;
+        }
+        
+        try {
+            $robotId = intval($_POST['robot_id'] ?? 0);
+            
+            if (!$robotId) {
+                $this->json(['success' => false, 'message' => 'ID do robô é obrigatório'], 400);
+                return;
+            }
+            
+            // Buscar dados do robô antes de deletar
+            $stmt = $this->db->prepare("SELECT robot_name FROM dr_ai_robots WHERE id = ?");
+            $stmt->execute([$robotId]);
+            $robot = $stmt->fetch();
+            
+            if (!$robot) {
+                $this->json(['success' => false, 'message' => 'Robô não encontrado'], 404);
+                return;
+            }
+            
+            // Deletar robô
+            $stmt = $this->db->prepare("DELETE FROM dr_ai_robots WHERE id = ?");
+            $success = $stmt->execute([$robotId]);
+            
+            if ($success && $stmt->rowCount() > 0) {
+                // Log da ação
+                $this->logUserAction(
+                    $this->user['id'],
+                    'robot_deleted',
+                    "Robô deletado: {$robot['robot_name']}"
+                );
+                
+                $this->json([
+                    'success' => true,
+                    'message' => 'Robô Dr. IA deletado com sucesso!'
+                ]);
+            } else {
+                $this->json(['success' => false, 'message' => 'Erro ao deletar robô'], 500);
+            }
+            
+        } catch (Exception $e) {
+            error_log("Erro ao deletar robô: " . $e->getMessage());
+            $this->json(['success' => false, 'message' => 'Erro interno do servidor'], 500);
+        }
+    }
+    
+    /**
+     * Testar robô Dr. IA
+     */
+    public function testRobot() {
+        $this->requireAuth();
+        
+        // Verificar se é admin
+        if ($this->user['role'] !== 'admin') {
+            $this->json(['success' => false, 'message' => 'Acesso negado'], 403);
+            return;
+        }
+        
+        try {
+            $robotId = intval($_GET['robot_id'] ?? 0);
+            
+            if (!$robotId) {
+                $this->json(['success' => false, 'message' => 'ID do robô é obrigatório'], 400);
+                return;
+            }
+            
+            // Buscar dados do robô
+            $stmt = $this->db->prepare("
+                SELECT robot_name, robot_slug, robot_specialty, is_active, has_page
+                FROM dr_ai_robots 
+                WHERE id = ?
+            ");
+            $stmt->execute([$robotId]);
+            $robot = $stmt->fetch();
+            
+            if (!$robot) {
+                $this->json(['success' => false, 'message' => 'Robô não encontrado'], 404);
+                return;
+            }
+            
+            // Verificar se tem página criada
+            if ($robot['has_page']) {
+                $this->json([
+                    'success' => true,
+                    'message' => 'Redirecionando para a página do robô...',
+                    'redirect' => '/ai/' . $robot['robot_slug']
+                ]);
+            } else {
+                $this->json([
+                    'success' => true,
+                    'message' => 'Robô configurado com sucesso! Página em desenvolvimento.',
+                    'robot_data' => [
+                        'name' => $robot['robot_name'],
+                        'specialty' => $robot['robot_specialty'],
+                        'is_active' => $robot['is_active']
+                    ]
+                ]);
+            }
+            
+        } catch (Exception $e) {
+            error_log("Erro ao testar robô: " . $e->getMessage());
+            $this->json(['success' => false, 'message' => 'Erro interno do servidor'], 500);
+        }
+    }
+    
+    /**
+     * Duplicar robô Dr. IA
+     */
+    public function duplicateRobot() {
+        $this->requireAuth();
+        $this->validateCSRF();
+        
+        // Verificar se é admin
+        if ($this->user['role'] !== 'admin') {
+            $this->json(['success' => false, 'message' => 'Acesso negado'], 403);
+            return;
+        }
+        
+        try {
+            $robotId = intval($_POST['robot_id'] ?? 0);
+            
+            if (!$robotId) {
+                $this->json(['success' => false, 'message' => 'ID do robô é obrigatório'], 400);
+                return;
+            }
+            
+            // Buscar dados do robô original
+            $stmt = $this->db->prepare("SELECT * FROM dr_ai_robots WHERE id = ?");
+            $stmt->execute([$robotId]);
+            $robot = $stmt->fetch();
+            
+            if (!$robot) {
+                $this->json(['success' => false, 'message' => 'Robô não encontrado'], 404);
+                return;
+            }
+            
+            // Gerar novo nome e slug
+            $newName = $robot['robot_name'] . ' (Cópia)';
+            $newSlug = $this->generateUniqueSlug($newName);
+            
+            // Inserir robô duplicado - usando apenas campos essenciais
+            $stmt = $this->db->prepare("
+                INSERT INTO dr_ai_robots (
+                    robot_name, robot_slug, robot_description, 
+                    robot_specialty, robot_icon, robot_category, is_active
+                ) VALUES (?, ?, ?, ?, ?, ?, 0)
+            ");
+            
+            $success = $stmt->execute([
+                $newName, $newSlug, $robot['robot_description'],
+                $robot['robot_specialty'], $robot['robot_icon'], 
+                $robot['robot_category']
+            ]);
+            
+            if ($success) {
+                $newRobotId = $this->db->lastInsertId();
+                
+                // Log da ação
+                $this->logUserAction(
+                    $this->user['id'],
+                    'robot_duplicated',
+                    "Robô duplicado: {$robot['robot_name']} -> {$newName}"
+                );
+                
+                $this->json([
+                    'success' => true,
+                    'message' => 'Robô Dr. IA duplicado com sucesso!',
+                    'new_robot_id' => $newRobotId,
+                    'new_robot_name' => $newName
+                ]);
+            } else {
+                $this->json(['success' => false, 'message' => 'Erro ao duplicar robô'], 500);
+            }
+            
+        } catch (Exception $e) {
+            error_log("Erro ao duplicar robô: " . $e->getMessage());
+            $this->json(['success' => false, 'message' => 'Erro interno do servidor'], 500);
+        }
+    }
+    
+    /**
+     * Alternar status do robô (ativo/inativo)
+     */
+    public function toggleRobotStatus() {
+        $this->requireAuth();
+        $this->validateCSRF();
+        
+        // Verificar se é admin
+        if ($this->user['role'] !== 'admin') {
+            $this->json(['success' => false, 'message' => 'Acesso negado'], 403);
+            return;
+        }
+        
+        try {
+            $robotId = intval($_POST['robot_id'] ?? 0);
+            
+            if (!$robotId) {
+                $this->json(['success' => false, 'message' => 'ID do robô é obrigatório'], 400);
+                return;
+            }
+            
+            // Buscar status atual
+            $stmt = $this->db->prepare("SELECT robot_name, is_active FROM dr_ai_robots WHERE id = ?");
+            $stmt->execute([$robotId]);
+            $robot = $stmt->fetch();
+            
+            if (!$robot) {
+                $this->json(['success' => false, 'message' => 'Robô não encontrado'], 404);
+                return;
+            }
+            
+            // Alternar status
+            $newStatus = $robot['is_active'] ? 0 : 1;
+            
+            // Atualizar no banco
+            $stmt = $this->db->prepare("
+                UPDATE dr_ai_robots 
+                SET is_active = ?, updated_at = CURRENT_TIMESTAMP 
+                WHERE id = ?
+            ");
+            
+            $success = $stmt->execute([$newStatus, $robotId]);
+            
+            if ($success && $stmt->rowCount() > 0) {
+                $statusText = $newStatus ? 'ativado' : 'desativado';
+                
+                // Log da ação
+                $this->logUserAction(
+                    $this->user['id'],
+                    'robot_status_toggled',
+                    "Robô {$statusText}: {$robot['robot_name']}"
+                );
+                
+                $this->json([
+                    'success' => true,
+                    'message' => "Robô {$statusText} com sucesso!",
+                    'new_status' => $newStatus ? 'active' : 'inactive'
+                ]);
+            } else {
+                $this->json(['success' => false, 'message' => 'Erro ao alterar status do robô'], 500);
+            }
+            
+        } catch (Exception $e) {
+            error_log("Erro ao alterar status do robô: " . $e->getMessage());
+            $this->json(['success' => false, 'message' => 'Erro interno do servidor'], 500);
+        }
+    }
+    
+    /**
+     * Gerar slug único para o robô
+     */
+    private function generateUniqueSlug($name) {
+        $slug = strtolower(trim($name));
+        $slug = preg_replace('/[^a-z0-9-]/', '-', $slug);
+        $slug = preg_replace('/-+/', '-', $slug);
+        $slug = trim($slug, '-');
+        
+        // Verificar se slug já existe
+        $originalSlug = $slug;
+        $counter = 1;
+        
+        while (true) {
+            $stmt = $this->db->prepare("SELECT id FROM dr_ai_robots WHERE robot_slug = ?");
+            $stmt->execute([$slug]);
+            
+            if ($stmt->rowCount() === 0) {
+                break;
+            }
+            
+            $slug = $originalSlug . '-' . $counter;
+            $counter++;
+        }
+        
+        return $slug;
+    }
+    
+    /**
+     * Obter cor baseada na categoria
+     */
+    private function getCategoryColor($category) {
+        $colors = [
+            'marketing' => '#e74c3c',
+            'atendimento' => '#3498db',
+            'vendas' => '#2ecc71',
+            'clinica' => '#9b59b6',
+            'educacao' => '#f39c12',
+            'pesquisa' => '#34495e',
+            'juridico' => '#16a085',
+            'diagnostico' => '#8e44ad',
+            'gestao' => '#d35400',
+            'fidelizacao' => '#27ae60',
+            'custom' => '#95a5a6'
+        ];
+        
+        return $colors[$category] ?? '#95a5a6';
+    }
 }

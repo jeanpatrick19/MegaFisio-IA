@@ -121,28 +121,10 @@ class Database {
     
     private function needsMigration() {
         try {
-            // Lista das tabelas essenciais que sempre devem existir
-            $essentialTables = [
-                'users', 
-                'user_profiles_extended', 
-                'settings', 
-                'ai_prompts', 
-                'ai_requests',
-                'user_logs',
-                'system_settings',
-                'user_permissions',
-                'login_attempts',
-                'password_resets',
-                'user_consents',
-                'system_health',
-                'error_logs',
-                'user_stats',
-                'user_activities',
-                'user_preferences',
-                'system_config'
-            ];
+            // Verificação otimizada: apenas tabelas críticas para funcionamento básico
+            $criticalTables = ['users', 'user_profiles_extended', 'settings'];
             
-            foreach ($essentialTables as $table) {
+            foreach ($criticalTables as $table) {
                 $stmt = $this->connection->prepare("
                     SELECT COUNT(*) 
                     FROM INFORMATION_SCHEMA.TABLES 
@@ -151,17 +133,14 @@ class Database {
                 $stmt->execute([$table]);
                 
                 if ($stmt->fetchColumn() == 0) {
-                    return true; // Tabela não existe, precisa migrar
+                    return true; // Tabela crítica não existe, precisa migrar
                 }
             }
             
-            // Verificar se a tabela user_profiles_extended tem todos os campos necessários
-            $requiredColumns = [
-                'phone', 'birth_date', 'gender', 'crefito', 'main_specialty', 
-                'theme', 'language', 'email_notifications'
-            ];
+            // Verificação rápida de campos essenciais apenas na user_profiles_extended
+            $criticalColumns = ['phone', 'theme', 'language'];
             
-            foreach ($requiredColumns as $column) {
+            foreach ($criticalColumns as $column) {
                 $stmt = $this->connection->prepare("
                     SELECT COUNT(*) 
                     FROM INFORMATION_SCHEMA.COLUMNS 
@@ -172,11 +151,11 @@ class Database {
                 $stmt->execute([$column]);
                 
                 if ($stmt->fetchColumn() == 0) {
-                    return true; // Campo não existe, precisa migrar
+                    return true; // Campo crítico não existe, precisa migrar
                 }
             }
             
-            return false; // Tudo OK
+            return false; // Estrutura básica OK
             
         } catch (Exception $e) {
             // Em caso de erro, assumir que precisa migrar

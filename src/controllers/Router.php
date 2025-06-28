@@ -103,6 +103,12 @@ class Router {
             
             // Admin - Assistente IA
             'admin/ai' => ['controller' => 'AIController', 'method' => 'index'],
+            'admin/ai/create-robot' => ['controller' => 'AIController', 'method' => 'createRobot'],
+            'admin/ai/edit-robot' => ['controller' => 'AIController', 'method' => 'editRobot'],
+            'admin/ai/delete-robot' => ['controller' => 'AIController', 'method' => 'deleteRobot'],
+            'admin/ai/test-robot' => ['controller' => 'AIController', 'method' => 'testRobot'],
+            'admin/ai/duplicate-robot' => ['controller' => 'AIController', 'method' => 'duplicateRobot'],
+            'admin/ai/toggle-robot-status' => ['controller' => 'AIController', 'method' => 'toggleRobotStatus'],
             
             // Admin - Perfil
             'admin/profile' => ['controller' => 'ProfileController', 'method' => 'index'],
@@ -202,6 +208,14 @@ class Router {
         }
         
         $route = isset($_GET['route']) ? trim($_GET['route'], '/') : '';
+        
+        // DEBUG: Log da rota processada
+        if ($route === 'admin/users/get-user-data') {
+            file_put_contents('/tmp/debug_getUserData.log', date('Y-m-d H:i:s') . " - Rota encontrada: $route\n", FILE_APPEND);
+        }
+        if ($route === 'admin/users/update') {
+            file_put_contents('/tmp/debug_updateUser.log', date('Y-m-d H:i:s') . " - Rota update encontrada: $route\n", FILE_APPEND);
+        }
         
         if (array_key_exists($route, $this->routes)) {
             $controllerName = $this->routes[$route]['controller'];

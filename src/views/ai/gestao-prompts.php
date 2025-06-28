@@ -1393,7 +1393,45 @@
         height: 100%;
     }
 }
+
+/* Alertas flutuantes */
+.alerta-flutuante {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: var(--branco-puro);
+    border-radius: 12px;
+    box-shadow: var(--sombra-forte);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transform: translateX(400px);
+    transition: transform 0.3s ease;
+    z-index: 10000;
+    max-width: 400px;
+}
+
+.alerta-flutuante.show {
+    transform: translateX(0);
+}
+
+.alerta-flutuante.sucesso {
+    background: var(--sucesso);
+    color: white;
+}
+
+.alerta-flutuante.erro {
+    background: var(--erro);
+    color: white;
+}
+
+.alerta-flutuante i {
+    font-size: 20px;
+}
 </style>
+
+<meta name="csrf-token" content="<?= $this->csrfToken() ?>">
 
 <script>
 // Filtrar prompts
@@ -1783,108 +1821,90 @@ function fecharModal(modalId) {
 }
 
 // Ações dos prompts
-function editarPrompt(id) {
+async function editarPrompt(id) {
     console.log('Editando prompt com ID:', id);
     
-    // Buscar dados do robô na lista atual
-    const robotCard = document.querySelector(`[data-prompt-id="${id}"]`);
-    console.log('Card encontrado:', robotCard);
-    
-    if (!robotCard) {
-        console.error('Robô não encontrado para ID:', id);
-        alert('Erro: Robô não encontrado. Verifique se a página foi carregada corretamente.');
-        return;
-    }
-    
-    // Extrair dados do card do robô
-    const robotName = robotCard.querySelector('.prompt-nome')?.textContent || '';
-    const robotCategory = robotCard.getAttribute('data-category') || '';
-    const robotDescription = robotCard.querySelector('.prompt-descricao')?.textContent || '';
-    const robotIconElement = robotCard.querySelector('.prompt-icone');
-    const robotIcon = robotIconElement ? robotIconElement.className.match(/fa[s|r|l|b]?\s+fa-[\w-]+/)?.[0] || 'fas fa-robot' : 'fas fa-robot';
-    const robotStatus = robotCard.getAttribute('data-status') || 'active';
-    
-    console.log('Dados extraídos:', {
-        name: robotName,
-        category: robotCategory,
-        description: robotDescription,
-        icon: robotIcon,
-        status: robotStatus
-    });
-    
-    // Verificar se o modal existe
-    const modal = document.getElementById('modalPrompt');
-    const modalTitle = document.getElementById('modalPromptTitulo');
-    
-    if (!modal || !modalTitle) {
-        console.error('Modal ou título não encontrado');
-        alert('Erro: Modal não encontrado na página.');
-        return;
-    }
-    
-    // Atualizar título do modal
-    modalTitle.textContent = `✏️ Editar ${robotName}`;
-    
-    // Verificar se os campos do formulário existem (IDs corretos)
-    const promptIdField = document.getElementById('promptId');
-    const nomeRoboField = document.getElementById('promptNome');
-    const categoriaRoboField = document.getElementById('promptCategoria');
-    const descricaoRoboField = document.getElementById('promptDescricao');
-    const statusRoboField = document.getElementById('promptStatus');
-    const iconeRoboField = document.getElementById('promptIcone');
-    
-    console.log('Campos encontrados:', {
-        promptId: !!promptIdField,
-        nome: !!nomeRoboField,
-        categoria: !!categoriaRoboField,
-        descricao: !!descricaoRoboField,
-        status: !!statusRoboField,
-        icone: !!iconeRoboField
-    });
-    
-    // Preencher campos do formulário se existirem
-    if (promptIdField) promptIdField.value = id;
-    if (nomeRoboField) nomeRoboField.value = robotName;
-    if (categoriaRoboField) categoriaRoboField.value = robotCategory;
-    if (descricaoRoboField) descricaoRoboField.value = robotDescription;
-    if (statusRoboField) statusRoboField.value = robotStatus;
-    
-    // Atualizar ícone 
-    if (iconeRoboField) {
-        iconeRoboField.value = robotIcon;
-        // Atualizar preview do ícone
-        const iconePreview = document.getElementById('iconePreview');
-        if (iconePreview) {
-            iconePreview.innerHTML = `<i class="${robotIcon}"></i>`;
+    try {
+        // Buscar dados reais do robô do servidor
+        const response = await fetch('/admin/ai/edit-robot', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: new URLSearchParams({
+                action: 'get',
+                id: id,
+                csrf_token: document.querySelector('meta[name="csrf-token"]')?.content || ''
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Erro ao buscar dados do robô');
         }
+        
+        const robotData = await response.json();
+        
+        if (!robotData.success) {
+            throw new Error(robotData.message || 'Erro ao carregar dados do robô');
+        }
+        
+        const robot = robotData.robot;
+        
+        // Verificar se o modal existe
+        const modal = document.getElementById('modalPrompt');
+        const modalTitle = document.getElementById('modalPromptTitulo');
+        
+        if (!modal || !modalTitle) {
+            alert('Erro: Modal não encontrado na página.');
+            return;
+        }
+        
+        // Atualizar título do modal
+        modalTitle.textContent = `✏️ Editar ${robot.robot_name}`;
+        
+        // Preencher campos do formulário com dados reais
+        const promptIdField = document.getElementById('promptId');
+        const nomeRoboField = document.getElementById('promptNome');
+        const categoriaRoboField = document.getElementById('promptCategoria');
+        const descricaoRoboField = document.getElementById('promptDescricao');
+        const statusRoboField = document.getElementById('promptStatus');
+        const iconeRoboField = document.getElementById('promptIcone');
+        const promptEspecializadoField = document.getElementById('promptEspecializado');
+        const limiteDiarioField = document.getElementById('promptLimiteDiario');
+        
+        if (promptIdField) promptIdField.value = robot.id;
+        if (nomeRoboField) nomeRoboField.value = robot.robot_name || '';
+        if (categoriaRoboField) categoriaRoboField.value = robot.robot_category || '';
+        if (descricaoRoboField) descricaoRoboField.value = robot.robot_description || '';
+        if (statusRoboField) statusRoboField.value = robot.is_active ? 'active' : 'inactive';
+        if (promptEspecializadoField) promptEspecializadoField.value = robot.robot_specialty || '';
+        if (limiteDiarioField) limiteDiarioField.value = robot.daily_limit || '100';
+        
+        // Atualizar ícone 
+        if (iconeRoboField) {
+            iconeRoboField.value = robot.robot_icon || 'fas fa-robot';
+            // Atualizar preview do ícone
+            const iconePreview = document.getElementById('iconePreview');
+            if (iconePreview) {
+                iconePreview.innerHTML = `<i class="${robot.robot_icon || 'fas fa-robot'}"></i>`;
+            }
+        }
+        
+        // Atualizar botão para "Salvar Robô Dr. IA"
+        const btnSubmit = document.querySelector('button[onclick="salvarRoboPrompt()"]');
+        if (btnSubmit) {
+            btnSubmit.innerHTML = '<i class="fas fa-save"></i> Salvar Robô Dr. IA';
+        }
+        
+        // Mostrar modal
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        
+    } catch (error) {
+        console.error('Erro ao carregar robô:', error);
+        mostrarAlerta('Erro ao carregar dados do robô: ' + error.message, 'erro');
     }
-    
-    // Preencher campos específicos se existirem
-    const promptEspecializadoField = document.getElementById('promptEspecializado');
-    const limiteDiarioField = document.getElementById('promptLimiteDiario');
-    
-    if (promptEspecializadoField) {
-        // Buscar prompt especializado de dados mock ou usar padrão
-        promptEspecializadoField.value = `Você é ${robotName}, um assistente especializado em ${robotDescription}. Responda de forma profissional e técnica, baseado em evidências científicas da fisioterapia.`;
-    }
-    
-    if (limiteDiarioField) {
-        // Buscar limite diário do card ou usar padrão
-        const limiteDiario = robotCard.querySelector('.stat-prompt-item:last-child .stat-prompt-numero')?.textContent || '100';
-        limiteDiarioField.value = limiteDiario;
-    }
-    
-    // Atualizar botão para "Salvar Robô Dr. IA"
-    const btnSubmit = document.querySelector('button[form="formPrompt"]');
-    if (btnSubmit) {
-        btnSubmit.innerHTML = '<i class="fas fa-save"></i> Salvar Robô Dr. IA';
-    }
-    
-    // Mostrar modal
-    modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-    
-    console.log('Modal deve estar visível agora');
 }
 
 function testarPrompt(id) {
@@ -2311,105 +2331,7 @@ if (topPSlider) {
 }
 
 // Função principal para salvar robô
-function salvarRoboPrompt() {
-    console.log('Salvando robô via AJAX!');
-    
-    const nome = document.getElementById('promptNome').value.trim();
-    const icone = document.getElementById('promptIcone').value.trim();
-    const categoria = document.getElementById('promptCategoria').value;
-    const categoriaCustom = document.getElementById('categoriaCustom').value.trim();
-    const descricao = document.getElementById('promptDescricao').value.trim();
-    const promptEspecializado = document.getElementById('promptEspecializado').value.trim();
-    const status = document.getElementById('promptStatus').value;
-    const limiteDiario = document.getElementById('promptLimiteDiario').value;
-    const promptId = document.getElementById('promptId').value;
-    
-    // Validações
-    if (!nome) {
-        mostrarAlerta('Nome do robô é obrigatório', 'aviso');
-        return;
-    }
-    
-    if (!icone) {
-        mostrarAlerta('Ícone é obrigatório', 'aviso');
-        return;
-    }
-    
-    if (!categoria) {
-        mostrarAlerta('Categoria é obrigatória', 'aviso');
-        return;
-    }
-    
-    if (!descricao) {
-        mostrarAlerta('Descrição é obrigatória', 'aviso');
-        return;
-    }
-    
-    if (!promptEspecializado) {
-        mostrarAlerta('Prompt especializado é obrigatório', 'aviso');
-        return;
-    }
-    
-    // Verificar se é edição ou criação
-    const isEdicao = !!promptId;
-    const endpoint = isEdicao ? '/admin/ai/edit-robot' : '/admin/ai/create-robot';
-    
-    // Preparar dados para envio
-    const formData = new FormData();
-    if (isEdicao) formData.append('promptId', promptId);
-    formData.append('promptNome', nome);
-    formData.append('promptIcone', icone);
-    formData.append('promptCategoria', categoria);
-    if (categoriaCustom) formData.append('categoriaCustom', categoriaCustom);
-    formData.append('promptDescricao', descricao);
-    formData.append('promptEspecializado', promptEspecializado);
-    formData.append('promptStatus', status);
-    formData.append('promptLimiteDiario', limiteDiario || 100);
-    formData.append('csrf_token', document.querySelector('input[name="csrf_token"]')?.value || '');
-    
-    // Mostrar indicador de carregamento
-    const btnSubmit = document.querySelector('button[onclick="salvarRoboPrompt()"]');
-    const originalText = btnSubmit ? btnSubmit.innerHTML : '';
-    if (btnSubmit) {
-        btnSubmit.disabled = true;
-        btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
-    }
-    
-    // Enviar para o backend
-    fetch(endpoint, {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            mostrarAlerta(data.message, 'sucesso');
-            
-            // Fechar modal
-            fecharModal('modalPrompt');
-            limparFormularioPrompt();
-            
-            // Recarregar a página para mostrar os dados atualizados
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
-            
-        } else {
-            mostrarAlerta(data.message || 'Erro ao salvar robô', 'erro');
-        }
-    })
-    .catch(error => {
-        console.error('Erro:', error);
-        mostrarAlerta('Erro de conexão. Tente novamente.', 'erro');
-    })
-    .finally(() => {
-        // Restaurar botão
-        if (btnSubmit) {
-            btnSubmit.disabled = false;
-            btnSubmit.innerHTML = originalText;
-        }
-    });
-}
+// Função salvarRoboPrompt removida - usando a versão async mais abaixo
 
 // Submissão do formulário (backup)
 document.addEventListener('DOMContentLoaded', function() {
@@ -2506,16 +2428,16 @@ async function salvarRoboPrompt() {
     const promptId = document.getElementById('promptId')?.value || '';
     const isEdit = promptId !== '';
     
-    // Preparar dados para envio
+    // Preparar dados para envio - IMPORTANTE: usar os nomes corretos esperados pelo PHP
     const data = {
-        id: promptId,
-        name: document.getElementById('promptNome')?.value || '',
-        icon: document.getElementById('promptIcone')?.value || 'fas fa-robot',
-        category: document.getElementById('promptCategoria')?.value || '',
-        description: document.getElementById('promptDescricao')?.value || '',
-        prompt: document.getElementById('promptEspecializado')?.value || '',
-        status: document.getElementById('promptStatus')?.value || 'active',
-        daily_limit: document.getElementById('promptLimiteDiario')?.value || '100',
+        promptId: promptId,  // PHP espera 'promptId'
+        promptNome: document.getElementById('promptNome')?.value || '',
+        promptIcone: document.getElementById('promptIcone')?.value || 'fas fa-robot',
+        promptCategoria: document.getElementById('promptCategoria')?.value || '',
+        promptDescricao: document.getElementById('promptDescricao')?.value || '',
+        promptEspecializado: document.getElementById('promptEspecializado')?.value || '',
+        promptStatus: document.getElementById('promptStatus')?.value || 'active',
+        promptLimiteDiario: document.getElementById('promptLimiteDiario')?.value || '100',
         csrf_token: csrfToken
     };
     
