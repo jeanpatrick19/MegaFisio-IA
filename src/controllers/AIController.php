@@ -46,18 +46,36 @@ class AIController extends BaseController {
     public function index() {
         $this->requireAuth();
         
-        // Buscar dados reais dos robôs Dr. IA do banco de dados
-        $promptsData = $this->getRealRobotsData();
+        // Se for admin, mostrar página de gestão
+        if ($this->user['role'] === 'admin') {
+            // Buscar dados reais dos robôs Dr. IA do banco de dados
+            $promptsData = $this->getRealRobotsData();
+            
+            // Calcular estatísticas reais dos cards
+            $stats = $this->getRealStats();
+            
+            $this->render('ai/gestao-prompts', [
+                'title' => 'Assistente IA para Fisioterapia',
+                'currentPage' => 'ai',
+                'user' => $this->user,
+                'promptsData' => $promptsData,
+                'stats' => $stats
+            ], 'fisioterapia-premium');
+        } else {
+            // Para usuários normais, mostrar página de robôs
+            $this->userRobots();
+        }
+    }
+    
+    private function userRobots() {
+        // Buscar robôs disponíveis para o usuário
+        $userRobots = $this->getUserAvailableRobots($this->user['id']);
         
-        // Calcular estatísticas reais dos cards
-        $stats = $this->getRealStats();
-        
-        $this->render('ai/gestao-prompts', [
-            'title' => 'Assistente IA para Fisioterapia',
+        $this->render('ai/user-robots', [
+            'title' => 'Assistentes IA - MegaFisio',
             'currentPage' => 'ai',
             'user' => $this->user,
-            'promptsData' => $promptsData,
-            'stats' => $stats
+            'userRobots' => $userRobots
         ], 'fisioterapia-premium');
     }
     
@@ -78,6 +96,24 @@ class AIController extends BaseController {
                 'solicitacao' => $_POST['solicitacao'] ?? ''
             ];
             
+            // Validar se prompt foi selecionado
+            if (!$promptId) {
+                throw new Exception('Por favor, selecione um robô Dr. IA');
+            }
+            
+            // Verificar permissão para USAR este robô (não só ver)
+            if ($this->user['role'] !== 'admin') {
+                require_once __DIR__ . '/../helpers/PermissionManager.php';
+                $permissionManager = new PermissionManager($this->db);
+                
+                // Buscar slug do robô pelo promptId
+                $robotSlug = $this->getRobotSlugByPromptId($promptId);
+                
+                if ($robotSlug && !$permissionManager->hasPermission($this->user['id'], $robotSlug . '_use')) {
+                    throw new Exception('Você não tem permissão para usar este robô. Entre em contato com o administrador.');
+                }
+            }
+            
             // Registrar log da solicitação
             $this->logUserAction(
                 $this->user['id'], 
@@ -85,13 +121,27 @@ class AIController extends BaseController {
                 "Solicitação de análise IA para paciente: {$patientData['nome_paciente']}"
             );
             
-            // Simular resposta da IA (implementar integração real)
-            $response = $this->generateAIResponse($promptId, $patientData);
+            // Usar o OpenAIService para gerar resposta real
+            require_once __DIR__ . '/../services/OpenAIService.php';
+            $openAIService = new OpenAIService($this->db);
+            
+            // Montar input do usuário
+            $inputUsuario = $this->formatPatientDataForAI($patientData);
+            
+            // Processar com OpenAI usando prompt configurado
+            $result = $openAIService->processRequest(
+                $this->user['id'], 
+                $promptId, 
+                $inputUsuario, 
+                $patientData
+            );
             
             $this->json([
                 'success' => true,
-                'response' => $response,
-                'timestamp' => date('Y-m-d H:i:s')
+                'response' => $this->formatAIResponseForInterface($result['resposta']),
+                'timestamp' => date('Y-m-d H:i:s'),
+                'tokens_used' => $result['tokens_used'],
+                'request_id' => $result['id']
             ]);
             
         } catch (Exception $e) {
@@ -104,8 +154,71 @@ class AIController extends BaseController {
             
             $this->json([
                 'success' => false,
-                'error' => 'Erro ao processar análise. Tente novamente.'
+                'error' => $e->getMessage()
             ], 500);
+        }
+    }
+    
+    public function getPromptId() {
+        $this->requireAuth();
+        
+        $robotSlug = $_GET['robot_slug'] ?? '';
+        
+        if (empty($robotSlug)) {
+            $this->json(['success' => false, 'error' => 'Robot slug não fornecido'], 400);
+            return;
+        }
+        
+        try {
+            // Formatar nome do robô
+            $robotName = str_replace(['dr_', '_'], ['Dr. ', ' '], $robotSlug);
+            $robotName = ucwords($robotName);
+            
+            // Log para debug
+            error_log("DEBUG: Buscando prompt para slug: $robotSlug -> nome formatado: $robotName");
+            
+            // Buscar prompt ID baseado no nome exato primeiro
+            $stmt = $this->db->prepare("
+                SELECT id, nome FROM ai_prompts 
+                WHERE status = 'ativo' 
+                AND (nome = ? OR LOWER(nome) = LOWER(?))
+                ORDER BY id DESC
+                LIMIT 1
+            ");
+            
+            $stmt->execute([$robotName, $robotName]);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($result) {
+                error_log("DEBUG: Encontrou prompt - ID: {$result['id']}, Nome: {$result['nome']}");
+                $this->json(['success' => true, 'prompt_id' => $result['id']]);
+            } else {
+                // Busca mais flexível se não encontrou exato
+                $searchTerm = '%' . str_replace('_', ' ', strtolower($robotSlug)) . '%';
+                error_log("DEBUG: Busca flexível com termo: $searchTerm");
+                
+                $stmt = $this->db->prepare("
+                    SELECT id, nome FROM ai_prompts 
+                    WHERE status = 'ativo' 
+                    AND (LOWER(nome) LIKE ? OR LOWER(descricao) LIKE ?)
+                    ORDER BY id DESC
+                    LIMIT 1
+                ");
+                $stmt->execute([$searchTerm, $searchTerm]);
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($result) {
+                    error_log("DEBUG: Encontrou com busca flexível - ID: {$result['id']}, Nome: {$result['nome']}");
+                    $this->json(['success' => true, 'prompt_id' => $result['id']]);
+                } else {
+                    error_log("DEBUG: Nenhum prompt encontrado para: $robotSlug");
+                    $this->json(['success' => false, 'error' => 'Prompt não encontrado para este robô']);
+                }
+            }
+            
+        } catch (Exception $e) {
+            error_log("ERRO: Busca de prompt falhou: " . $e->getMessage());
+            $this->json(['success' => false, 'error' => 'Erro ao buscar prompt'], 500);
         }
     }
     
@@ -188,25 +301,75 @@ class AIController extends BaseController {
         }
     }
     
-    private function generateAIResponse($promptId, $patientData) {
-        // Simular resposta da IA - implementar integração real aqui
-        $responses = [
-            'ortopedica' => $this->generateOrtopedicResponse($patientData),
-            'neurologica' => $this->generateNeurologicResponse($patientData),
-            'respiratoria' => $this->generateRespiratoryResponse($patientData),
-            'geriatrica' => $this->generateGeriatricResponse($patientData),
-            'pediatrica' => $this->generatePediatricResponse($patientData)
-        ];
+    private function formatPatientDataForAI($patientData) {
+        $input = "DADOS DO PACIENTE:\n\n";
+        $input .= "Nome: " . $patientData['nome_paciente'] . "\n";
+        $input .= "Idade: " . $patientData['idade'] . "\n";
+        $input .= "Diagnóstico: " . $patientData['diagnostico'] . "\n";
+        $input .= "Queixa Principal: " . $patientData['queixa_principal'] . "\n";
         
-        // Buscar tipo do prompt
+        if (!empty($patientData['limitacoes'])) {
+            $input .= "Limitações Funcionais: " . $patientData['limitacoes'] . "\n";
+        }
+        
+        if (!empty($patientData['exames'])) {
+            $input .= "Exames Complementares: " . $patientData['exames'] . "\n";
+        }
+        
+        $input .= "\nSOLICITAÇÃO:\n" . $patientData['solicitacao'];
+        
+        return $input;
+    }
+    
+    private function formatAIResponseForInterface($response) {
+        // Formatar resposta da IA para exibição na interface
+        $formatted = htmlspecialchars($response);
+        
+        // Converter formatação básica
+        $formatted = preg_replace('/\*\*(.*?)\*\*/', '<strong>$1</strong>', $formatted);
+        $formatted = preg_replace('/\*(.*?)\*/', '<em>$1</em>', $formatted);
+        
+        // Converter listas numeradas
+        $formatted = preg_replace('/(\d+)\.\s+(.+)/', '<div class="lista-numerada"><span class="numero">$1.</span> $2</div>', $formatted);
+        
+        // Converter listas com marcadores
+        $formatted = preg_replace('/[-•]\s+(.+)/', '<div class="lista-marcador"><span class="marcador">•</span> $1</div>', $formatted);
+        
+        // Converter títulos/seções
+        $formatted = preg_replace('/^([A-ZÁÊÍÓÚÂÔÀÇ][A-ZÁÊÍÓÚÂÔÀÇ\s:]+):?\s*$/m', '<h3 class="secao-titulo">$1</h3>', $formatted);
+        
+        // Converter quebras de linha
+        $formatted = nl2br($formatted);
+        
+        // Adicionar emojis se não houver
+        if (!preg_match('/[\x{1F600}-\x{1F64F}]|[\x{1F300}-\x{1F5FF}]|[\x{1F680}-\x{1F6FF}]|[\x{1F1E0}-\x{1F1FF}]/u', $formatted)) {
+            $formatted = '<div class="resposta-com-emoji">📋 ' . $formatted . '</div>';
+        }
+        
+        return '<div class="resposta-formatada">' . $formatted . '</div>';
+    }
+    
+    private function getRobotSlugByPromptId($promptId) {
         try {
-            $stmt = $this->db->prepare("SELECT slug FROM ai_prompts WHERE id = ?");
-            $stmt->execute([$promptId]);
-            $slug = $stmt->fetchColumn();
+            // Se é numérico, busca o nome do prompt
+            if (is_numeric($promptId)) {
+                $stmt = $this->db->prepare("SELECT nome FROM ai_prompts WHERE id = ?");
+                $stmt->execute([$promptId]);
+                $nome = $stmt->fetchColumn();
+                
+                if ($nome) {
+                    // Converte nome para slug (ex: "Dr. Autoritas" -> "dr_autoritas")
+                    $slug = strtolower(str_replace([' ', '.'], ['_', ''], $nome));
+                    return $slug;
+                }
+            }
             
-            return $responses[$slug] ?? $this->generateGenericResponse($patientData);
+            // Se já é um slug, retorna como está
+            return $promptId;
+            
         } catch (Exception $e) {
-            return $this->generateGenericResponse($patientData);
+            error_log("Erro ao buscar slug do robô: " . $e->getMessage());
+            return null;
         }
     }
     
@@ -2428,5 +2591,59 @@ class AIController extends BaseController {
         ];
         
         return $colors[$category] ?? '#95a5a6';
+    }
+    
+    /**
+     * Buscar robôs disponíveis para o usuário
+     */
+    private function getUserAvailableRobots($userId) {
+        try {
+            // Buscar todos os robôs ativos
+            $stmt = $this->db->query("
+                SELECT id, robot_name, robot_slug, robot_icon, robot_category, robot_description 
+                FROM dr_ai_robots 
+                WHERE is_active = TRUE 
+                ORDER BY sort_order, robot_name
+            ");
+            $allRobots = $stmt->fetchAll();
+            
+            // Incluir PermissionManager
+            if (!class_exists('PermissionManager')) {
+                require_once __DIR__ . '/../helpers/PermissionManager.php';
+            }
+            
+            $permissionManager = new PermissionManager($this->db);
+            
+            $visibleRobots = [];
+            $usableRobots = [];
+            
+            foreach ($allRobots as $robot) {
+                $canView = $permissionManager->hasPermission($userId, $robot['robot_slug'] . '_view') ||
+                          $permissionManager->hasPermission($userId, $robot['robot_slug'] . '_use');
+                
+                $canUse = $permissionManager->hasPermission($userId, $robot['robot_slug'] . '_use');
+                
+                if ($canView) {
+                    $robot['can_use'] = $canUse;
+                    $visibleRobots[] = $robot;
+                    
+                    if ($canUse) {
+                        $usableRobots[] = $robot;
+                    }
+                }
+            }
+            
+            return [
+                'visible' => $visibleRobots,
+                'usable' => $usableRobots,
+                'all' => $allRobots
+            ];
+        } catch (Exception $e) {
+            return [
+                'visible' => [],
+                'usable' => [],
+                'all' => []
+            ];
+        }
     }
 }

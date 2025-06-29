@@ -76,18 +76,27 @@ class DashboardController extends BaseController {
     }
     
     private function professionalDashboard() {
+        // Buscar dados completos do usuário incluindo created_at
+        $userData = $this->getCompleteUserData($this->user['id']);
+        
+        // Buscar robôs reais disponíveis para este usuário
+        $userRobots = $this->getUserAvailableRobots($this->user['id']);
+        
         // Estatísticas do profissional
         $stats = [
             'patients_count' => 0, // Implementar depois
             'documents_created' => $this->getDocumentsCreated($this->user['id']),
             'ai_requests' => $this->getUserAIRequests($this->user['id']),
-            'monthly_usage' => $this->getMonthlyUsage($this->user['id'])
+            'monthly_usage' => $this->getMonthlyUsage($this->user['id']),
+            'available_robots' => count($userRobots['visible']),
+            'active_robots' => count($userRobots['usable']),
+            'user_robots' => $userRobots
         ];
         
         $this->render('dashboard/professional', [
-            'title' => 'Dashboard Profissional',
+            'title' => 'Dashboard Profissional - MegaFisio IA',
             'currentPage' => 'dashboard',
-            'user' => $this->user,
+            'user' => $userData ?: $this->user, // Usar dados completos ou fallback
             'stats' => $stats
         ], 'fisioterapia-premium');
     }
@@ -422,6 +431,89 @@ class DashboardController extends BaseController {
             return $stmt->fetchAll();
         } catch (Exception $e) {
             return [];
+        }
+    }
+    
+    private function getAvailableRobotsCount() {
+        try {
+            $stmt = $this->db->query("SELECT COUNT(*) FROM dr_ai_robots");
+            return $stmt->fetchColumn();
+        } catch (Exception $e) {
+            return 23; // Valor padrão
+        }
+    }
+    
+    private function getActiveRobotsCount() {
+        try {
+            $stmt = $this->db->query("SELECT COUNT(*) FROM dr_ai_robots WHERE is_active = 1");
+            return $stmt->fetchColumn();
+        } catch (Exception $e) {
+            return 23; // Valor padrão
+        }
+    }
+    
+    private function getCompleteUserData($userId) {
+        try {
+            $stmt = $this->db->prepare("
+                SELECT id, name, email, role, created_at, updated_at, last_login
+                FROM users 
+                WHERE id = ? AND deleted_at IS NULL
+            ");
+            $stmt->execute([$userId]);
+            return $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            return null;
+        }
+    }
+    
+    private function getUserAvailableRobots($userId) {
+        try {
+            // Buscar todos os robôs ativos
+            $stmt = $this->db->query("
+                SELECT id, robot_name, robot_slug, robot_icon, robot_category 
+                FROM dr_ai_robots 
+                WHERE is_active = TRUE 
+                ORDER BY sort_order, robot_name
+            ");
+            $allRobots = $stmt->fetchAll();
+            
+            // Incluir PermissionManager
+            if (!class_exists('PermissionManager')) {
+                require_once __DIR__ . '/../helpers/PermissionManager.php';
+            }
+            
+            $permissionManager = new PermissionManager($this->db);
+            
+            $visibleRobots = [];
+            $usableRobots = [];
+            
+            foreach ($allRobots as $robot) {
+                $canView = $permissionManager->hasPermission($userId, $robot['robot_slug'] . '_view') ||
+                          $permissionManager->hasPermission($userId, $robot['robot_slug'] . '_use');
+                
+                $canUse = $permissionManager->hasPermission($userId, $robot['robot_slug'] . '_use');
+                
+                if ($canView) {
+                    $robot['can_use'] = $canUse;
+                    $visibleRobots[] = $robot;
+                    
+                    if ($canUse) {
+                        $usableRobots[] = $robot;
+                    }
+                }
+            }
+            
+            return [
+                'visible' => $visibleRobots,
+                'usable' => $usableRobots,
+                'all' => $allRobots
+            ];
+        } catch (Exception $e) {
+            return [
+                'visible' => [],
+                'usable' => [],
+                'all' => []
+            ];
         }
     }
 }

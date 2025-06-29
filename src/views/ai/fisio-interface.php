@@ -888,6 +888,128 @@
     margin-bottom: 32px;
 }
 
+/* Formatação das Respostas da IA */
+.resposta-formatada {
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--cinza-escuro);
+}
+
+.resposta-formatada .secao-titulo {
+    color: var(--azul-saude);
+    font-size: 18px;
+    font-weight: 700;
+    margin: 24px 0 12px 0;
+    padding: 8px 0;
+    border-bottom: 2px solid var(--cinza-claro);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.resposta-formatada .secao-titulo::before {
+    content: '📋';
+    font-size: 20px;
+}
+
+.lista-numerada {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin: 8px 0;
+    padding: 12px;
+    background: var(--cinza-claro);
+    border-radius: 8px;
+    border-left: 4px solid var(--azul-saude);
+}
+
+.lista-numerada .numero {
+    background: var(--azul-saude);
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.lista-marcador {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin: 6px 0;
+    padding: 8px 12px;
+    background: rgba(30, 58, 138, 0.05);
+    border-radius: 6px;
+}
+
+.lista-marcador .marcador {
+    color: var(--azul-saude);
+    font-weight: 700;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.resposta-com-emoji {
+    padding: 16px 0;
+}
+
+.resposta-formatada strong {
+    color: var(--azul-saude);
+    font-weight: 700;
+}
+
+.resposta-formatada em {
+    color: var(--lilas-cuidado);
+    font-style: italic;
+}
+
+/* Melhorias na caixa de resultado */
+.resultado-conteudo {
+    font-size: 15px;
+    line-height: 1.8;
+    color: var(--cinza-escuro);
+}
+
+.resultado-conteudo h3 {
+    color: var(--azul-saude);
+    margin: 20px 0 12px;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.resultado-conteudo ul {
+    background: var(--cinza-claro);
+    padding: 16px 20px;
+    border-radius: 8px;
+    margin: 12px 0;
+    border-left: 4px solid var(--verde-terapia);
+}
+
+.resultado-conteudo ol {
+    background: rgba(30, 58, 138, 0.05);
+    padding: 16px 20px;
+    border-radius: 8px;
+    margin: 12px 0;
+    border-left: 4px solid var(--azul-saude);
+}
+
+.resultado-conteudo li {
+    margin-bottom: 8px;
+    line-height: 1.6;
+}
+
+.resultado-conteudo p {
+    margin-bottom: 12px;
+    text-align: justify;
+}
+
 /* Responsividade melhorada */
 @media (max-width: 1200px) {
     .ai-interface-grid {
@@ -967,8 +1089,8 @@ function selecionarRobotIA(btn) {
         name: btn.dataset.robotName
     };
     
-    // Atualizar input hidden com o slug do robô
-    document.getElementById('promptId').value = promptSelecionado.slug;
+    // Buscar ID do prompt do robô selecionado
+    buscarPromptIdDoRobot(promptSelecionado.slug);
     
     // Mostrar badge
     const badge = document.getElementById('especialidadeSelecionada');
@@ -977,6 +1099,25 @@ function selecionarRobotIA(btn) {
     
     // Adaptar formulário baseado no robô selecionado
     adaptarFormularioParaRobot(promptSelecionado.slug);
+}
+
+// Buscar ID do prompt baseado no slug do robô
+async function buscarPromptIdDoRobot(robotSlug) {
+    try {
+        const response = await fetch(`/ai/get-prompt-id?robot_slug=${encodeURIComponent(robotSlug)}`);
+        const result = await response.json();
+        
+        if (result.success && result.prompt_id) {
+            document.getElementById('promptId').value = result.prompt_id;
+        } else {
+            // Fallback: usar o slug como ID temporariamente
+            document.getElementById('promptId').value = robotSlug;
+        }
+    } catch (error) {
+        console.warn('Erro ao buscar prompt ID:', error);
+        // Fallback: usar o slug como ID
+        document.getElementById('promptId').value = robotSlug;
+    }
 }
 
 // Adaptar formulário baseado no tipo de robô
@@ -1053,23 +1194,33 @@ document.getElementById('formFisioterapia').addEventListener('submit', async fun
     }
     
     try {
-        // Simular chamada à API (substituir por chamada real)
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        // Fazer chamada real para a API
+        const response = await fetch('/ai/analyze', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+            },
+            body: JSON.stringify(dados)
+        });
         
-        // Simular resposta (substituir por resposta real)
-        const resposta = gerarRespostaSimulada(dados);
+        const result = await response.json();
         
-        // Mostrar resultado
-        mostrarResultado(resposta);
-        
-        // Mostrar ações e feedback
-        document.getElementById('acoesResultado').style.display = 'flex';
-        document.getElementById('cardFeedback').style.display = 'block';
-        
-        mostrarAlerta('Análise concluída com sucesso!', 'sucesso');
+        if (result.success) {
+            // Mostrar resultado real da IA
+            mostrarResultado(`<div class="resultado-conteudo">${result.response}</div>`);
+            
+            // Mostrar ações e feedback
+            document.getElementById('acoesResultado').style.display = 'flex';
+            document.getElementById('cardFeedback').style.display = 'block';
+            
+            mostrarAlerta('Análise concluída com sucesso!', 'sucesso');
+        } else {
+            throw new Error(result.error || 'Erro ao processar análise');
+        }
         
     } catch (erro) {
-        mostrarAlerta('Erro ao processar análise. Tente novamente.', 'erro');
+        mostrarAlerta(`Erro: ${erro.message}`, 'erro');
         console.error(erro);
         
     } finally {

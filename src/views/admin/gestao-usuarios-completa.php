@@ -3881,46 +3881,28 @@ function gerenciarLGPD(userId) {
 }
 
 function excluirUsuario(userId, userName, userEmail) {
-    if (confirm(`ATENÇÃO: Esta ação é IRREVERSÍVEL!\n\nDeseja realmente excluir permanentemente o usuário:\n${userName} (${userEmail})?\n\nTodos os dados serão perdidos!`)) {
-        const confirmacao = prompt('Para confirmar a exclusão, digite "EXCLUIR" (em maiúsculas):');
+    if (confirm(`Você tem certeza que deseja excluir o usuário?\n\n${userName} (${userEmail})\n\nEsta ação não pode ser desfeita.`)) {
+        // Criar form para submissão POST
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/admin/users/delete';
         
-        if (confirmacao === 'EXCLUIR') {
-            const emailConfirmacao = prompt(`Digite o email do usuário para confirmar:\n${userEmail}`);
-            
-            if (emailConfirmacao === userEmail) {
-                // Criar form para submissão POST
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = '/admin/users/delete?id=' + userId;
-                
-                // Adicionar campos hidden
-                const confirmField = document.createElement('input');
-                confirmField.type = 'hidden';
-                confirmField.name = 'confirm_delete';
-                confirmField.value = 'EXCLUIR';
-                
-                const emailField = document.createElement('input');
-                emailField.type = 'hidden';
-                emailField.name = 'user_email';
-                emailField.value = userEmail;
-                
-                const csrfField = document.createElement('input');
-                csrfField.type = 'hidden';
-                csrfField.name = 'csrf_token';
-                csrfField.value = document.querySelector('meta[name="csrf-token"]')?.content || '';
-                
-                form.appendChild(confirmField);
-                form.appendChild(emailField);
-                form.appendChild(csrfField);
-                
-                document.body.appendChild(form);
-                form.submit();
-            } else {
-                alert('Email não confere. Exclusão cancelada.');
-            }
-        } else {
-            alert('Confirmação incorreta. Exclusão cancelada.');
-        }
+        // Adicionar campos hidden
+        const userIdField = document.createElement('input');
+        userIdField.type = 'hidden';
+        userIdField.name = 'user_id';
+        userIdField.value = userId;
+        
+        const csrfField = document.createElement('input');
+        csrfField.type = 'hidden';
+        csrfField.name = 'csrf_token';
+        csrfField.value = document.querySelector('meta[name="csrf-token"]')?.content || '';
+        
+        form.appendChild(userIdField);
+        form.appendChild(csrfField);
+        
+        document.body.appendChild(form);
+        form.submit();
     }
 }
 

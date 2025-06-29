@@ -6,6 +6,7 @@
     <title><?= $title ?? 'Painel' ?> - MegaFisio IA | Sistema Inteligente para Fisioterapia</title>
     <meta name="theme-color" content="#1e3a8a">
     <meta name="description" content="Sistema de gestão e inteligência artificial para fisioterapeutas">
+    <meta name="csrf-token" content="<?= $_SESSION['csrf_token'] ?? '' ?>">
     <link rel="icon" href="<?= BASE_URL ?>/favicon.svg" type="image/svg+xml">
     
     <!-- Fonts Premium -->
@@ -14,93 +15,30 @@
     
     <!-- CSS Global de Temas -->
     <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/temas-globais.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/sistema-unificado.css">
     
-    <!-- CSS CRÍTICO INLINE: Evitar flash completamente -->
-    <style id="critical-theme">
-        /* CSS base neutro - será sobrescrito pelo tema */
-        html, body { 
-            margin: 0; 
-            padding: 0; 
-            transition: none !important;
-            background-color: #f8fafc;
-            color: #1f2937;
-        }
-    </style>
-    
-    <!-- Script inline para aplicar tema IMEDIATAMENTE (sem flash) -->
+    <!-- Script simplificado para aplicar tema -->
     <script>
     (function() {
         try {
             var temaLocal = localStorage.getItem('tema-megafisio') || 'claro';
             var htmlElement = document.documentElement;
             
-            // CSS crítico para evitar flash
-            var criticalCSS = '';
-            
             htmlElement.className = '';
             switch(temaLocal) {
                 case 'escuro':
-                    criticalCSS = `
-                        html, body, * { 
-                            background-color: #0f172a !important; 
-                            color: #f8fafc !important;
-                            border-color: #475569 !important;
-                        }
-                        input, select, textarea, button {
-                            background-color: #1e293b !important;
-                            color: #f8fafc !important;
-                            border-color: #475569 !important;
-                        }
-                        .card, .card-fisio, div {
-                            background-color: #1e293b !important;
-                            color: #f8fafc !important;
-                        }
-                    `;
                     htmlElement.classList.add('tema-escuro');
                     break;
                 case 'auto':
                     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                        criticalCSS = `
-                            html, body { 
-                                background-color: #0f172a !important; 
-                                color: #f8fafc !important;
-                            }
-                            * { background: transparent !important; }
-                        `;
                         htmlElement.classList.add('tema-auto', 'tema-escuro');
                     } else {
-                        criticalCSS = `
-                            html, body { 
-                                background-color: #f8fafc !important; 
-                                color: #1f2937 !important;
-                            }
-                        `;
                         htmlElement.classList.add('tema-auto', 'tema-claro');
                     }
                     break;
                 default:
-                    criticalCSS = `
-                        html, body { 
-                            background-color: #f8fafc !important; 
-                            color: #1f2937 !important;
-                        }
-                    `;
                     htmlElement.classList.add('tema-claro');
             }
-            
-            // Injetar CSS crítico
-            var styleElement = document.getElementById('critical-theme');
-            if (styleElement) {
-                styleElement.innerHTML = criticalCSS;
-            }
-            
-            // Aplicar no body quando disponível
-            document.addEventListener('DOMContentLoaded', function() {
-                document.body.className = htmlElement.className;
-                // NÃO remover CSS crítico para evitar flash
-                // O CSS será sobrescrito pelos arquivos carregados
-            });
-            
         } catch(e) {
             document.documentElement.classList.add('tema-claro');
         }
@@ -108,40 +46,6 @@
     </script>
     
     <style>
-        :root {
-            /* Paleta Profissional de Saúde */
-            --azul-saude: #1e3a8a;          /* Azul profissional */
-            --verde-terapia: #059669;       /* Verde saúde */
-            --dourado-premium: #ca8a04;     /* Dourado suave */
-            --lilas-cuidado: #7c3aed;       /* Lilás tecnologia */
-            --branco-puro: #ffffff;         /* Branco limpo */
-            --cinza-claro: #f8fafc;         /* Fundo suave */
-            --cinza-medio: #e5e7eb;         /* Bordas */
-            --cinza-escuro: #1f2937;        /* Texto principal */
-            --preto-menu: #111827;          /* Menu escuro */
-            
-            /* Cores de Status */
-            --sucesso: #10b981;             /* Verde positivo */
-            --alerta: #f59e0b;              /* Amarelo atenção */
-            --erro: #ef4444;                /* Vermelho erro */
-            --info: #3b82f6;                /* Azul informação */
-            
-            /* Gradientes Suaves */
-            --gradiente-principal: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
-            --gradiente-menu: linear-gradient(180deg, #111827 0%, #1f2937 100%);
-            --gradiente-card: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-            
-            /* Sombras Modernas */
-            --sombra-suave: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-            --sombra-media: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            --sombra-forte: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            --sombra-flutuante: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-            
-            /* Transições */
-            --transicao: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            --transicao-lenta: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
         * {
             margin: 0;
             padding: 0;
@@ -155,8 +59,8 @@
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             font-size: 16px;
-            background: var(--cinza-claro);
-            color: var(--cinza-escuro);
+            background: var(--fundo-secundario);
+            color: var(--texto);
             line-height: 1.6;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
@@ -175,11 +79,11 @@
             top: 0;
             width: 280px;
             height: 100vh;
-            background: var(--gradiente-menu);
+            background: linear-gradient(180deg, #111827 0%, #1f2937 100%);
             z-index: 1000;
             overflow-y: auto;
-            transition: var(--transicao);
-            box-shadow: var(--sombra-forte);
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         }
 
         /* Logotipo */
@@ -193,7 +97,7 @@
         .logo-icone {
             width: 60px;
             height: 60px;
-            background: var(--gradiente-principal);
+            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
             border-radius: 16px;
             display: flex;
             align-items: center;
@@ -201,7 +105,7 @@
             margin: 0 auto 16px;
             font-size: 28px;
             color: white;
-            box-shadow: var(--sombra-media);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
 
         .logo-texto {
@@ -236,7 +140,7 @@
             color: rgba(255, 255, 255, 0.7);
             text-decoration: none;
             border-radius: 12px;
-            transition: var(--transicao);
+            transition: all 0.3s ease;
             font-weight: 500;
             font-size: 15px;
             position: relative;
@@ -249,9 +153,9 @@
         }
 
         .menu-link.ativo {
-            background: var(--azul-saude);
+            background: #1e3a8a;
             color: white;
-            box-shadow: var(--sombra-media);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
 
         .menu-link.ativo::before {
@@ -262,7 +166,7 @@
             transform: translateY(-50%);
             width: 4px;
             height: 70%;
-            background: var(--dourado-premium);
+            background: #ca8a04;
             border-radius: 0 4px 4px 0;
         }
         
@@ -295,7 +199,7 @@
         }
 
         .menu-badge {
-            background: var(--dourado-premium);
+            background: #ca8a04;
             color: white;
             font-size: 11px;
             padding: 2px 8px;
@@ -316,10 +220,10 @@
         .header-fisio {
             position: sticky;
             top: 0;
-            background: var(--branco-puro);
-            border-bottom: 1px solid var(--cinza-medio);
+            background: var(--fundo);
+            border-bottom: 1px solid var(--border);
             z-index: 900;
-            box-shadow: var(--sombra-suave);
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
         }
 
         .header-conteudo {
@@ -340,30 +244,30 @@
             background: none;
             border: none;
             font-size: 24px;
-            color: var(--cinza-escuro);
+            color: var(--texto);
             cursor: pointer;
         }
 
         .saudacao {
-            color: var(--cinza-escuro);
+            color: var(--texto);
             font-size: 18px;
             font-weight: 600;
         }
 
         .saudacao-nome {
-            color: var(--azul-saude);
+            color: var(--primario);
         }
 
         .saudacao-subtexto {
             font-size: 14px;
-            color: var(--cinza-medio);
+            color: var(--texto-secundario);
             font-weight: 400;
             margin-top: 2px;
         }
 
         .saudacao-subtexto-admin {
             font-size: 14px;
-            color: var(--cinza-escuro);
+            color: var(--texto);
             font-weight: 600;
             margin-top: 2px;
         }
@@ -392,7 +296,7 @@
 
         .data-hora {
             font-size: 14px;
-            color: var(--cinza-escuro);
+            color: var(--texto);
             font-weight: 600;
             display: flex;
             align-items: center;
@@ -404,7 +308,7 @@
         }
         
         .data-hora i {
-            color: var(--azul-saude);
+            color: var(--primario);
             font-size: 16px;
         }
 
@@ -414,16 +318,16 @@
             height: 40px;
             border-radius: 50%;
             cursor: pointer;
-            transition: var(--transicao);
+            transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
-            border: 2px solid var(--cinza-medio);
+            border: 2px solid var(--border);
             margin-left: 12px;
         }
 
         .user-avatar-header:hover {
             transform: scale(1.05);
-            border-color: var(--azul-saude);
+            border-color: var(--primario);
             box-shadow: 0 0 15px rgba(30, 58, 138, 0.3);
         }
 
@@ -437,7 +341,7 @@
         .user-avatar-header .avatar-letter {
             width: 100%;
             height: 100%;
-            background: var(--gradiente-principal);
+            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
             color: white;
             display: flex;
             align-items: center;
@@ -452,22 +356,22 @@
             background: none;
             border: none;
             font-size: 20px;
-            color: var(--cinza-escuro);
+            color: var(--texto);
             cursor: pointer;
             padding: 8px;
             border-radius: 8px;
-            transition: var(--transicao);
+            transition: all 0.3s ease;
         }
 
         .notificacoes:hover {
-            background: var(--cinza-claro);
+            background: var(--fundo-terciario);
         }
 
         .notificacao-badge {
             position: absolute;
             top: 0;
             right: 0;
-            background: var(--erro);
+            background: #ef4444;
             color: white;
             font-size: 10px;
             width: 18px;
@@ -477,6 +381,23 @@
             align-items: center;
             justify-content: center;
             font-weight: 700;
+        }
+
+        /* Robôs com permissão restrita */
+        .robot-disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .robot-disabled:hover {
+            opacity: 0.7;
+            background: var(--fundo-secundario) !important;
+        }
+        
+        .permission-badge {
+            font-size: 12px;
+            margin-left: auto;
+            opacity: 0.8;
         }
 
 
@@ -502,29 +423,29 @@
         .titulo-pagina {
             font-size: 32px;
             font-weight: 800;
-            color: var(--cinza-escuro);
+            color: var(--texto);
             margin-bottom: 8px;
         }
 
         .subtitulo-pagina {
             font-size: 16px;
-            color: var(--cinza-medio);
+            color: var(--texto-secundario);
             margin-bottom: 32px;
         }
 
         /* Cards Modernos */
         .card-fisio {
-            background: var(--branco-puro);
+            background: var(--fundo);
             border-radius: 16px;
             padding: 24px;
-            box-shadow: var(--sombra-media);
-            transition: var(--transicao);
-            border: 1px solid var(--cinza-medio);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            border: 1px solid var(--border);
         }
 
         .card-fisio:hover {
             transform: translateY(-2px);
-            box-shadow: var(--sombra-forte);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         }
 
         /* Botões */
@@ -535,7 +456,7 @@
             font-weight: 600;
             font-size: 15px;
             cursor: pointer;
-            transition: var(--transicao);
+            transition: all 0.3s ease;
             display: inline-flex;
             align-items: center;
             gap: 8px;
@@ -543,24 +464,24 @@
         }
 
         .btn-primario {
-            background: var(--gradiente-principal);
+            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
             color: white;
-            box-shadow: var(--sombra-media);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
 
         .btn-primario:hover {
             transform: translateY(-2px);
-            box-shadow: var(--sombra-forte);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         }
 
         .btn-secundario {
-            background: var(--branco-puro);
-            color: var(--azul-saude);
-            border: 2px solid var(--azul-saude);
+            background: var(--fundo);
+            color: var(--primario);
+            border: 2px solid var(--primario);
         }
 
         .btn-secundario:hover {
-            background: var(--azul-saude);
+            background: var(--primario);
             color: white;
         }
 
@@ -575,7 +496,7 @@
             bottom: 100%;
             left: 50%;
             transform: translateX(-50%);
-            background: var(--preto-menu);
+            background: #111827;
             color: white;
             padding: 8px 12px;
             border-radius: 8px;
@@ -583,7 +504,7 @@
             white-space: nowrap;
             opacity: 0;
             visibility: hidden;
-            transition: var(--transicao);
+            transition: all 0.3s ease;
             margin-bottom: 8px;
             z-index: 1000;
         }
@@ -692,22 +613,22 @@
         }
 
         .alerta-sucesso {
-            background: var(--sucesso);
+            background: #10b981;
             color: white;
         }
 
         .alerta-erro {
-            background: var(--erro);
+            background: #ef4444;
             color: white;
         }
 
         .alerta-aviso {
-            background: var(--alerta);
+            background: #f59e0b;
             color: white;
         }
 
         .alerta-info {
-            background: var(--info);
+            background: #3b82f6;
             color: white;
         }
     </style>
@@ -751,7 +672,7 @@
                     </div>
                     
                     <?php
-                    // Buscar robôs disponíveis - primeiro mostrar todos para teste
+                    // Buscar robôs disponíveis com verificação de permissões
                     try {
                         $stmt = $this->db->query("
                             SELECT id, robot_name, robot_slug, robot_icon 
@@ -759,44 +680,54 @@
                             WHERE is_active = TRUE 
                             ORDER BY sort_order, robot_name
                         ");
-                        $robots = $stmt->fetchAll();
+                        $allRobots = $stmt->fetchAll();
                         
-                        if (empty($robots)) {
-                            // Se não há robôs, mostrar menu padrão
-                            ?>
-                            <div class="menu-item">
-                                <a href="<?= BASE_URL ?>/ai" class="menu-link <?= $currentPage === 'ai' ? 'ativo' : '' ?>">
-                                    <div class="menu-icone"><i class="fas fa-brain"></i></div>
-                                    <span class="menu-texto" data-translate="Assistente IA">Assistente IA</span>
-                                </a>
-                            </div>
-                            <?php
-                        } else {
-                            foreach ($robots as $robot): 
+                        // Filtrar robôs baseado nas permissões do usuário
+                        $visibleRobots = [];
+                        
+                        // Incluir PermissionManager se não estiver incluído
+                        if (!class_exists('PermissionManager')) {
+                            require_once __DIR__ . '/../helpers/PermissionManager.php';
+                        }
+                        
+                        $permissionManager = new PermissionManager($this->db);
+                        
+                        foreach ($allRobots as $robot) {
+                            // Verificar se o usuário tem permissão para VER este robô
+                            $canView = $permissionManager->hasPermission($user['id'], $robot['robot_slug'] . '_view') ||
+                                      $permissionManager->hasPermission($user['id'], $robot['robot_slug'] . '_use');
+                            
+                            if ($canView) {
+                                $visibleRobots[] = $robot;
+                            }
+                        }
+                        
+                        if (!empty($visibleRobots)) {
+                            foreach ($visibleRobots as $robot): 
+                                // Verificar se o usuário pode USAR este robô (não só ver)
+                                $canUse = $permissionManager->hasPermission($user['id'], $robot['robot_slug'] . '_use');
                     ?>
                         <div class="menu-item">
-                            <a href="<?= BASE_URL ?>/ai/<?= htmlspecialchars($robot['robot_slug']) ?>" class="menu-link <?= $currentPage === $robot['robot_slug'] ? 'ativo' : '' ?>">
+                            <a href="<?= BASE_URL ?>/ai/<?= htmlspecialchars($robot['robot_slug']) ?>" 
+                               class="menu-link <?= $currentPage === $robot['robot_slug'] ? 'ativo' : '' ?><?= !$canUse ? ' robot-disabled' : '' ?>"
+                               <?= !$canUse ? 'title="Você pode ver este robô mas não tem permissão para usá-lo"' : '' ?>>
                                 <div class="menu-icone"><i class="<?= htmlspecialchars($robot['robot_icon']) ?>"></i></div>
                                 <span class="menu-texto"><?= htmlspecialchars($robot['robot_name']) ?></span>
+                                <?php if (!$canUse): ?>
+                                    <span class="permission-badge">👁️</span>
+                                <?php endif; ?>
                             </a>
                         </div>
                     <?php 
                             endforeach;
                         }
                     } catch (Exception $e) {
-                        // Fallback se houver erro
-                    ?>
-                        <div class="menu-item">
-                            <a href="<?= BASE_URL ?>/ai" class="menu-link <?= $currentPage === 'ai' ? 'ativo' : '' ?>">
-                                <div class="menu-icone"><i class="fas fa-brain"></i></div>
-                                <span class="menu-texto" data-translate="Assistente IA">Assistente IA</span>
-                            </a>
-                        </div>
-                    <?php } ?>
+                        // Se houver erro, não mostrar nada
+                    } ?>
                 <?php else: ?>
                     <!-- Admin mantém menu original -->
                     <div class="menu-item">
-                        <a href="<?= BASE_URL ?>/admin/ai" class="menu-link <?= $currentPage === 'ai' ? 'ativo' : '' ?>">
+                        <a href="<?= BASE_URL ?>/ai" class="menu-link <?= $currentPage === 'ai' ? 'ativo' : '' ?>">
                             <div class="menu-icone"><i class="fas fa-brain"></i></div>
                             <span class="menu-texto" data-translate="IA do Sistema">IA do Sistema</span>
                         </a>

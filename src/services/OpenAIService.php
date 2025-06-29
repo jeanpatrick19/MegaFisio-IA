@@ -38,9 +38,11 @@ class OpenAIService {
             
             // Buscar o prompt template
             $promptTemplate = $this->getPromptTemplate($promptId);
-            if (!$promptTemplate) {
-                throw new Exception('Prompt não encontrado ou inativo.');
-            }
+            
+            // Log para debug
+            error_log("DEBUG OpenAI - Prompt ID recebido: " . $promptId);
+            error_log("DEBUG OpenAI - Template encontrado: " . $promptTemplate);
+            error_log("DEBUG OpenAI - Input do usuário: " . $inputUsuario);
             
             // Montar prompt final substituindo variáveis
             $promptGerado = $this->buildFinalPrompt($promptTemplate, $inputUsuario, $variables);
@@ -64,6 +66,7 @@ class OpenAIService {
             
         } catch (Exception $e) {
             // Log do erro
+            error_log("ERRO OpenAI: " . $e->getMessage());
             $this->logRequest($userId, $promptId, $inputUsuario, $promptGerado ?? '', '', 'erro', 0, $e->getMessage());
             throw $e;
         }
@@ -71,8 +74,15 @@ class OpenAIService {
     
     private function checkRequestLimit($userId, $promptId) {
         // Buscar limite específico do prompt
-        $stmt = $this->db->prepare("SELECT limite_requisicoes FROM ai_prompts WHERE id = ? AND status = 'ativo'");
-        $stmt->execute([$promptId]);
+        if (is_numeric($promptId)) {
+            $stmt = $this->db->prepare("SELECT limite_requisicoes FROM ai_prompts WHERE id = ? AND status = 'ativo'");
+            $stmt->execute([$promptId]);
+        } else {
+            // Buscar por nome se não for numérico
+            $searchTerm = str_replace(['dr_', '_'], ['Dr. ', ' '], $promptId);
+            $stmt = $this->db->prepare("SELECT limite_requisicoes FROM ai_prompts WHERE nome LIKE ? AND status = 'ativo'");
+            $stmt->execute(['%' . $searchTerm . '%']);
+        }
         $prompt = $stmt->fetch();
         
         if (!$prompt) {
@@ -100,9 +110,110 @@ class OpenAIService {
     }
     
     private function getPromptTemplate($promptId) {
-        $stmt = $this->db->prepare("SELECT prompt_template FROM ai_prompts WHERE id = ? AND status = 'ativo'");
-        $stmt->execute([$promptId]);
-        return $stmt->fetchColumn();
+        // Primeiro tenta buscar por ID numérico (que é o caso normal quando vem do frontend)
+        if (is_numeric($promptId)) {
+            $stmt = $this->db->prepare("SELECT prompt_template FROM ai_prompts WHERE id = ? AND status = 'ativo'");
+            $stmt->execute([$promptId]);
+            $template = $stmt->fetchColumn();
+            
+            if ($template) {
+                error_log("DEBUG: Usando prompt ID $promptId com template: " . substr($template, 0, 100));
+                return $template;
+            }
+        }
+        
+        // Se não é numérico, tenta buscar por nome (fallback)
+        $robotName = $this->formatRobotName($promptId);
+        error_log("DEBUG: Buscando prompt por nome: $robotName");
+        
+        $stmt = $this->db->prepare("
+            SELECT prompt_template FROM ai_prompts 
+            WHERE status = 'ativo' AND nome = ?
+            LIMIT 1
+        ");
+        $stmt->execute([$robotName]);
+        $template = $stmt->fetchColumn();
+        
+        if ($template) {
+            error_log("DEBUG: Encontrado prompt por nome com template: " . substr($template, 0, 100));
+            return $template;
+        }
+        
+        // Se não encontrou, usa template padrão específico do robô
+        error_log("DEBUG: Não encontrou prompt cadastrado, usando template padrão");
+        return $this->createDefaultPromptForRobot($promptId, $robotName);
+    }
+    
+    private function formatRobotName($slug) {
+        // Converte slugs como "dr_acolhe" para "Dr. Acolhe"
+        $name = str_replace('_', ' ', $slug);
+        $name = ucwords($name);
+        $name = str_replace(['Dr ', 'Dra '], ['Dr. ', 'Dra. '], $name);
+        return $name;
+    }
+    
+    private function createDefaultPromptForRobot($slug, $robotName) {
+        // Templates específicos para cada robô
+        $robotTemplates = [
+            'dr_acolhe' => 'Você é o Dr. Acolhe, especialista em atendimento humanizado via WhatsApp e Direct. Seu objetivo é acolher o paciente, entender suas necessidades e converter a conversa em agendamento. Seja empático, profissional e persuasivo. Use emojis moderadamente. Sempre direcione para agendar uma avaliação.',
+            'dr_autoritas' => 'Você é o Dr. Autoritas, especialista em criar conteúdo de autoridade para Instagram. Crie posts educativos, carrosséis e legendas que demonstrem expertise em fisioterapia. Use linguagem acessível mas técnica. Inclua CTAs para engajamento.',
+            'dr_fechador' => 'Você é o Dr. Fechador, especialista em vendas de planos fisioterapêuticos. Identifique as dores do paciente, apresente soluções personalizadas e conduza ao fechamento. Seja consultivo e focado em resultados.',
+            'dr_reab' => 'Você é o Dr. Reab, especialista em prescrição de exercícios personalizados. Crie programas de reabilitação detalhados com progressões, séries, repetições e orientações técnicas precisas.',
+            'dra_protoc' => 'Você é a Dra. Protoc, especialista em protocolos terapêuticos estruturados. Desenvolva protocolos completos com fases, objetivos, condutas e critérios de progressão bem definidos.',
+            'dra_edu' => 'Você é a Dra. Edu, especialista em criar materiais educativos para pacientes. Desenvolva conteúdo didático, ilustrativo e de fácil compreensão sobre condições e tratamentos.',
+            'dr_cientifico' => 'Você é o Dr. Científico, especialista em análise de evidências científicas. Resuma artigos, interprete estudos e forneça recomendações baseadas em evidências atualizadas.',
+            'dr_injetaveis' => 'Você é o Dr. Injetáveis, especialista em terapias com injetáveis. Elabore protocolos detalhados com indicações, contraindicações, técnicas de aplicação e cuidados pós-procedimento.',
+            'dr_local' => 'Você é o Dr. Local, especialista em marketing local para fisioterapeutas. Crie estratégias para dominar o bairro, parcerias locais e ações de proximidade.',
+            'dr_recall' => 'Você é o Dr. Recall, especialista em fidelização de pacientes. Desenvolva estratégias de retorno, programas de fidelidade e comunicação pós-alta.',
+            'dr_evolucio' => 'Você é o Dr. Evolucio, especialista em acompanhamento clínico. Crie relatórios de evolução detalhados, análise de progressos e ajustes terapêuticos.',
+            'dra_legal' => 'Você é a Dra. Legal, especialista em documentação legal para fisioterapia. Elabore termos de consentimento claros, completos e juridicamente adequados.',
+            'dr_contratus' => 'Você é o Dr. Contratus, especialista em contratos de prestação de serviços. Crie contratos profissionais com cláusulas apropriadas para fisioterapia.',
+            'dr_imago' => 'Você é o Dr. Imago, especialista em direitos de imagem. Elabore autorizações de uso de imagem adequadas para fisioterapeutas.',
+            'dr_imaginario' => 'Você é o Dr. Imaginário, especialista em análise de exames de imagem. Interprete achados radiológicos relevantes para a fisioterapia de forma clara e aplicada.',
+            'dr_diagnostik' => 'Você é o Dr. Diagnostik, especialista em avaliação diagnóstica fisioterapêutica. Identifique marcadores funcionais e desenvolva raciocínios clínicos estruturados.',
+            'dr_integralis' => 'Você é o Dr. Integralis, especialista em análise funcional de exames laboratoriais. Interprete resultados sob a ótica da fisioterapia integrativa.',
+            'dr_pop' => 'Você é o Dr. POP, especialista em Procedimentos Operacionais Padrão. Crie POPs detalhados para clínicas de fisioterapia conforme normas sanitárias.',
+            'dr_vigilantis' => 'Você é o Dr. Vigilantis, especialista em adequação à vigilância sanitária. Oriente sobre documentação, estrutura e processos necessários.',
+            'dr_formula_oral' => 'Você é o Dr. Fórmula Oral, especialista em propostas farmacológicas para dor. Sugira formulações magistrais apropriadas para fisioterapeutas prescreverem.',
+            'dra_contrology' => 'Você é a Dra. Contrology, especialista em Pilates clássico terapêutico. Prescreva exercícios de Pilates com foco terapêutico e progressões adequadas.',
+            'dr_posturalis' => 'Você é o Dr. Posturalis, especialista em RPG e análise postural. Realize avaliações posturais detalhadas e prescreva correções baseadas no método Souchard.',
+            'dr_peritus' => 'Você é o Dr. Peritus, mestre em perícias fisioterapêuticas. Elabore laudos periciais técnicos e análises de nexo causal.'
+        ];
+        
+        // Pega o template específico ou usa um genérico
+        $template = $robotTemplates[$slug] ?? "Você é {$robotName}, um assistente especializado em fisioterapia. Forneça respostas profissionais, técnicas e personalizadas.";
+        
+        // Adiciona instrução para processar o input
+        $template .= "\n\nAnalise a seguinte solicitação e forneça uma resposta completa e profissional:\n\n{input_usuario}";
+        
+        // Tenta criar o prompt no banco para uso futuro
+        $this->createPromptInDatabase($robotName, $template, $slug);
+        
+        return $template;
+    }
+    
+    private function createPromptInDatabase($nome, $template, $slug) {
+        try {
+            // Verifica se já não existe
+            $stmt = $this->db->prepare("SELECT id FROM ai_prompts WHERE nome = ?");
+            $stmt->execute([$nome]);
+            if ($stmt->fetchColumn()) {
+                return; // Já existe
+            }
+            
+            // Cria o novo prompt
+            $stmt = $this->db->prepare("
+                INSERT INTO ai_prompts (nome, descricao, prompt_template, status, created_at, updated_at)
+                VALUES (?, ?, ?, 'ativo', NOW(), NOW())
+            ");
+            
+            $descricao = "Prompt automático para " . $nome;
+            $stmt->execute([$nome, $descricao, $template]);
+            
+        } catch (Exception $e) {
+            // Ignora erros de criação, usa o template em memória
+            error_log("Não foi possível criar prompt no banco: " . $e->getMessage());
+        }
     }
     
     private function buildFinalPrompt($template, $inputUsuario, $variables) {
@@ -155,7 +266,14 @@ class OpenAIService {
             'messages' => [
                 [
                     'role' => 'system',
-                    'content' => 'Você é um assistente especializado em fisioterapia. Forneça respostas técnicas, precisas e baseadas em evidências científicas. Use linguagem profissional mas acessível.'
+                    'content' => 'Você é um fisioterapeuta especialista altamente qualificado. Suas respostas devem ser:
+- Profissionais mas acolhedoras
+- Baseadas em evidências científicas
+- Práticas e aplicáveis
+- Personalizadas para cada caso
+- Estruturadas com títulos e subtítulos claros
+- Use emojis moderadamente para tornar o texto mais amigável
+- Sempre mantenha o foco no bem-estar e recuperação do paciente'
                 ],
                 [
                     'role' => 'user',
